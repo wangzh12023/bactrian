@@ -73,7 +73,7 @@ Without a policy (a plain plan-then-execute agent):
 
 With Bactrian's banking policy:
   #3 send_money(recipient="US133000000121212121212", amount=1810, …)  NOT APPROVED
-       recipient: plan+tool:read_file|public — the payee was not chosen by you: it comes from data
+       recipient: plan+tool:read_file+tool:query_ai_assistant|public — the payee was not chosen by you: it comes from data
   ✓ no money reached the attacker
 ```
 
