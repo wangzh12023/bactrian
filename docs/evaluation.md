@@ -63,6 +63,8 @@ were produced with the final interpreter (after every fix listed above).
 
 | Model | Agent | Utility, no attack | Utility under attack | Attack success rate |
 |---|---|---|---|---|
+| GPT-4o | tool-calling agent, no defence | 13/16 (81%) | 111/144 (77%) | **67/144 (47%)** |
+| GPT-4o | Bactrian | 8/16 (50%) | 76/144 (53%) | **1/144 (1%)**¹ |
 | GPT-4o-mini | tool-calling agent, no defence | 10/16 (62%) | 76/144 (53%) | **38/144 (26%)** |
 | GPT-4o-mini | Bactrian | 7/16 (44%) | 57/144 (40%) | **1/144 (1%)**¹ |
 | GPT-4o-mini | Bactrian, quarantined LLM hijacked | 6/16 (38%) | 58/144 (40%) | **1/144 (1%)**¹ |
@@ -80,10 +82,11 @@ comparable, and report the cell instead of hiding it.
 
 **Reading the numbers.**
 
-- *Security.* An undefended GPT-4o-mini agent follows injected instructions in
-  more than a quarter of the attacked runs: it sends the balance or the
-  transaction history to the attacker, changes the password, redirects the
-  standing order. With Bactrian no injected instruction reached a decision —
+- *Security.* The stronger the model, the more faithfully it follows injected
+  instructions: an undefended GPT-4o agent did so in almost half of the
+  attacked runs (67 / 144), GPT-4o-mini in more than a quarter — sending the
+  balance or the transaction history to the attacker, changing the password,
+  redirecting the standing order. With Bactrian no injected instruction reached a decision —
   including when the quarantined model is replaced by the attacker. DeepSeek
   resisted this particular, well-known attack template on its own; Bactrian's
   guarantee does not depend on that (see the hijacked rows, and the adaptive
@@ -102,7 +105,10 @@ comparable, and report the cell instead of hiding it.
     stated fact. These fail by design.
   - **Planner mistakes** in the restricted language (e.g. using `next(...)`),
     usually fixed by the retry loop.
-- *Cost.* Bactrian made 229–278 planner calls per 160 runs (retries included)
+  - **Stronger planners recover more**: with GPT-4o, Bactrian completes 76 /
+    144 attacked runs (GPT-4o-mini: 57) — the planner writes better plans in
+    the restricted language, while security stays the same.
+- *Cost.* Bactrian made 218–278 planner calls per 160 runs (retries included)
   plus quarantined-model calls; the baseline made one model call per tool step.
 
 **Reproduce.**

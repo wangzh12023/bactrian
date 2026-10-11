@@ -56,7 +56,7 @@
         <li>提示注入：OWASP LLM Top 10 第 1 位</li>
         <li>2026：Claude Cowork 外泄文件、GitHub agent 泄露私有仓库（GitLost）</li>
         <li>“检测”是概率性的：自适应攻击下大多数防御失效<br><span class="sub">The Attacker Moves Second, 2025</span></li>
-        <li class="bad"><b>实测：GPT-4o-mini 普通智能体 144 次攻击中 38 次被攻破（26%）</b></li>
+        <li class="bad"><b>实测：GPT-4o 普通智能体 144 次攻击中 67 次被攻破（47%）；模型越强，越“听话”</b></li>
       </ul>
     </div>
   </div>
@@ -137,8 +137,9 @@ effect update_password
   <h2>真实大模型：AgentDojo 银行套件（16 × 9）</h2>
   <table>
     <tr><th>模型</th><th>智能体</th><th>受攻击时可用性</th><th>攻击成功率</th></tr>
+    <tr><td>GPT-4o</td><td>普通工具调用</td><td>77%</td><td class="bad"><b>47%（67/144）</b></td></tr>
+    <tr><td>GPT-4o</td><td><b>Bactrian</b></td><td>53%</td><td class="good"><b>1/144¹</b></td></tr>
     <tr><td>GPT-4o-mini</td><td>普通工具调用</td><td>53%</td><td class="bad"><b>26%（38/144）</b></td></tr>
-    <tr><td>GPT-4o-mini</td><td><b>Bactrian</b></td><td>40%</td><td class="good"><b>1/144¹</b></td></tr>
     <tr><td>GPT-4o-mini</td><td><b>Bactrian，隔离模型被劫持</b></td><td>40%</td><td class="good"><b>1/144¹</b></td></tr>
     <tr><td>DeepSeek</td><td><b>Bactrian，隔离模型被劫持</b></td><td>38%</td><td class="good"><b>0%</b></td></tr>
   </table>

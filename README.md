@@ -34,6 +34,10 @@ your data goes. The design follows Google DeepMind's CaMeL
 independent, embeddable implementation of it with a policy language,
 deterministic replay and property-tested guarantees.
 
+**In numbers:** on AgentDojo's banking suite, an undefended GPT-4o agent was
+talked into **67 of 144** attacks; the same model inside Bactrian into **1** —
+a false positive of the benchmark ([details](#results-with-real-models)).
+
 ```mermaid
 flowchart LR
   U([User request]) --> P[Planner LLM<br/>sees the request only]
@@ -171,6 +175,8 @@ agent using the same model:
 
 | Model | Agent | Utility, no attack | Utility under attack | Attack success rate |
 |---|---|---|---|---|
+| GPT-4o | tool-calling agent, no defence | 81% | 77% | **47% (67/144)** |
+| GPT-4o | Bactrian | 50% | 53% | **1/144¹** |
 | GPT-4o-mini | tool-calling agent, no defence | 62% | 53% | **26% (38/144)** |
 | GPT-4o-mini | Bactrian | 44% | 40% | **1/144¹** |
 | GPT-4o-mini | Bactrian, quarantined LLM *hijacked by the attacker* | 38% | 40% | **1/144¹** |

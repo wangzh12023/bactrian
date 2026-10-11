@@ -26,6 +26,8 @@ Bactrian（双峰驼）是一个用 **MoonBit** 实现的智能体运行时，�
 
 设计思想来自 Google DeepMind 的 CaMeL 论文（[Debenedetti et al., 2025](https://arxiv.org/abs/2503.18813)）。官方 CaMeL 是一个"不维护、可能有 bug"的 Python 研究原型；Bactrian 是一个**独立的、可嵌入的工程化实现**，并且加入了策略语言、确定性回放和有性质测试保障的安全性质。
 
+**一组数字：** 在 AgentDojo 银行套件上，不设防的 GPT-4o 智能体在 144 次攻击中被说服了 **67 次**；同一个模型放进 Bactrian，只有 **1 次**——而且是评测本身的误报（[详见评测](#真实大模型评测agentdojo-银行套件16-任务--9-种注入)）。
+
 ## 三分钟上手
 
 [![Playground：同一段计划，有/无 Bactrian 的对比](docs/img/playground-3.png)](https://wangzh12023.github.io/bactrian/)
@@ -97,6 +99,8 @@ effect update_password
 
 | 模型 | 智能体 | 无攻击可用性 | 受攻击时可用性 | 攻击成功率 |
 |---|---|---|---|---|
+| GPT-4o | 普通工具调用智能体（无防护） | 81% | 77% | **47%（67/144）** |
+| GPT-4o | Bactrian | 50% | 53% | **1/144¹** |
 | GPT-4o-mini | 普通工具调用智能体（无防护） | 62% | 53% | **26%（38/144）** |
 | GPT-4o-mini | Bactrian | 44% | 40% | **1/144¹** |
 | GPT-4o-mini | Bactrian，**隔离模型被攻击者劫持** | 38% | 40% | **1/144¹** |
