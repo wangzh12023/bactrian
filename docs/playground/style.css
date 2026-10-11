@@ -116,3 +116,13 @@ button.ghost { background: transparent; border: 1px solid var(--line); color: va
 .warn { color: var(--warn); font-size: 13px; }
 .footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
 .footer a { color: var(--accent); }
+
+.tab.live { border-style: dashed; }
+.field { display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: center; margin-bottom: 6px; font-size: 13px; }
+.field input { font: 13px var(--mono); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--code-bg); color: var(--ink); }
+.field-name { color: var(--muted); }
+select { width: 100%; font: inherit; font-size: 13px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--code-bg); color: var(--ink); }
+button.run:disabled { opacity: .5; cursor: not-allowed; }
+.attempts details { margin-bottom: 8px; }
+.attempts summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+pre.code-view { font: 12px/1.45 var(--mono); background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; white-space: pre; }

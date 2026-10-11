@@ -3,7 +3,7 @@ using @html {div, span, button, textarea, h1, h2, h3, p, label, input}
 
 ///|
 fn view(m : Model, emit : @rabbita.Emit[Msg]) -> @html.Html {
-  let s = scenarios()[m.scenario]
+  let s = scenarios()[if m.scenario == live_tab { 0 } else { m.scenario }]
   let (policy, policy_error) : (@policy.Policy?, String?) = try
     @policy.parse_policy(m.policy)
   catch {
@@ -16,14 +16,43 @@ fn view(m : Model, emit : @rabbita.Emit[Msg]) -> @html.Html {
     header(),
     div(
       class="tabs",
-      scenarios().mapi((i, sc) => {
+      [
+        ..scenarios().mapi((i, sc) => {
+          button(
+            class=if i == m.scenario { "tab active" } else { "tab" },
+            on_click=emit(Pick(i)),
+            sc.title,
+          )
+        }),
         button(
-          class=if i == m.scenario { "tab active" } else { "tab" },
-          on_click=emit(Pick(i)),
-          sc.title,
-        )
-      }),
+          class=if m.scenario == live_tab {
+            "tab live active"
+          } else {
+            "tab live"
+          },
+          on_click=emit(Pick(live_tab)),
+          "⚡ Live: a real model plans",
+        ),
+      ],
     ),
+    if m.scenario == live_tab {
+      live_view(m, emit)
+    } else {
+      scenario_view(m, s, policy, policy_error, emit)
+    },
+    footer(),
+  ])
+}
+
+///|
+fn scenario_view(
+  m : Model,
+  s : Scenario,
+  policy : @policy.Policy?,
+  policy_error : String?,
+  emit : @rabbita.Emit[Msg],
+) -> @html.Html {
+  div(class="page-body", [
     div(class="grid", [
       div(class="col", [
         p(class="lesson", s.lesson),
@@ -110,7 +139,6 @@ fn view(m : Model, emit : @rabbita.Emit[Msg]) -> @html.Html {
         ]),
       ]),
     ]),
-    footer(),
   ])
 }
 

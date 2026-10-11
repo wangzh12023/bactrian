@@ -144,9 +144,20 @@ On the 16 user tasks × 9 injection tasks of AgentDojo's banking suite, with the
 same model as planner and quarantined LLM, against an undefended tool-calling
 agent using the same model:
 
-<!-- RESULTS -->
-*(see [docs/evaluation.md](docs/evaluation.md) for the full tables, per-task
-numbers and how to reproduce them)*
+| Model | Agent | Utility, no attack | Utility under attack | Attack success rate |
+|---|---|---|---|---|
+| GPT-4o-mini | tool-calling agent, no defence | 62% | 53% | **26% (38/144)** |
+| GPT-4o-mini | Bactrian | 44% | 38% | **1/144¹** |
+| GPT-4o-mini | Bactrian, quarantined LLM *hijacked by the attacker* | 38% | 40% | **1/144¹** |
+| DeepSeek | tool-calling agent, no defence | 69% | 69% | 0% |
+| DeepSeek | Bactrian, quarantined LLM *hijacked* | 44% | 43% | **0%** |
+
+¹ A false positive of the benchmark: the task itself asks to pay rent to the
+account the injection names. Security is bought with utility — mostly actions
+a document can trigger, which Bactrian holds for the user's approval (our
+simulated user refuses them all) and "follow the instructions in this file"
+tasks, which fail by design. Full analysis, per-task numbers and raw data:
+[docs/evaluation.md](docs/evaluation.md).
 
 ## How it compares
 
