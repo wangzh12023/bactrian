@@ -13,7 +13,7 @@ import {
 import {
   "wangzh12023/bactrian/label",
   "wangzh12023/bactrian/policy",
-  "marianoguerra/pure-py/basic",
+  "wangzh12023/bactrian/runtime",
 } for "test"
 
 warnings = "-implicit_impl_as_method"

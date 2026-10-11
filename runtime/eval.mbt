@@ -51,23 +51,23 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
           }
         }
       }
-      { value: VStr(sb.to_string()), label: self.stamp(l.join(Label::plan())), }
+      { value: VStr(sb.to_string()), label: l.join(Label::plan()), }
     }
     List(elts~, span~, ..) => {
       let items = self.eval_elements(elts, span)
-      list_item(items, self.stamp(Label::plan()))
+      list_item(items, Label::plan())
     }
     Tuple(elts~, span~, ..) => {
       let items = self.eval_elements(elts, span)
-      { value: VTuple(items), label: self.stamp(Label::plan()), }
+      { value: VTuple(items), label: Label::plan(), }
     }
     Set(elts~, span~) => {
       let items = dedupe(self.eval_elements(elts, span))
-      list_item(items, self.stamp(Label::plan()))
+      list_item(items, Label::plan())
     }
     Dict(keys~, values~, span~) => {
       let entries : Map[String, (Item, Item)] = Map([])
-      let mut shape = self.stamp(Label::plan())
+      let mut shape = Label::plan()
       for i, k in keys {
         match k {
           Some(ke) => {
@@ -100,7 +100,7 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
             }
         }
       }
-      { value: VDict({ entries, shape, }), label: self.stamp(Label::plan()), }
+      { value: VDict({ entries, shape, }), label: Label::plan(), }
     }
     Attribute(value~, attr~, span~, ..) =>
       self.attribute(self.eval(value), attr, span)
@@ -119,7 +119,7 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
     }
     UnaryOp(op~, operand~, span~) => {
       let v = self.eval(operand)
-      let l = self.stamp(v.top())
+      let l = v.top()
       match (op, v.value) {
         (Not, x) => { value: VBool(!x.truthy()), label: l, }
         (USub, VInt(i)) => { value: VInt(-i), label: l, }
@@ -153,8 +153,8 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
         decided = decided.join(x.top())
       }
       match result {
-        Some(x) => x.taint(self.stamp(decided))
-        None => none_item(self.stamp(Label::plan()))
+        Some(x) => x.taint(decided)
+        None => none_item(Label::plan())
       }
     }
     Compare(left~, ops~, comparators~, span~) => {
@@ -171,7 +171,7 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
         }
         lhs = rhs
       }
-      { value: VBool(ok), label: self.stamp(l), }
+      { value: VBool(ok), label: l, }
     }
     IfExp(cond~, body~, or_else~, ..) => {
       let c = self.eval(cond)
@@ -198,9 +198,9 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
         Map([]),
         Label::bottom(),
         span,
-        (ctx, local_pc) => out.push(ctx.eval(elt).taint(ctx.stamp(local_pc))),
+        (ctx, local_pc) => out.push(ctx.eval(elt).taint(local_pc)),
       )
-      list_item(out, self.stamp(Label::plan()), shape=self.stamp(shape))
+      list_item(out, Label::plan(), shape~)
     }
     SetComp(elt~, generators~, span~) => {
       let out = []
@@ -210,9 +210,9 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
         Map([]),
         Label::bottom(),
         span,
-        (ctx, local_pc) => out.push(ctx.eval(elt).taint(ctx.stamp(local_pc))),
+        (ctx, local_pc) => out.push(ctx.eval(elt).taint(local_pc)),
       )
-      list_item(dedupe(out), self.stamp(Label::plan()), shape=self.stamp(shape))
+      list_item(dedupe(out), Label::plan(), shape~)
     }
     GeneratorExp(elt~, generators~, span~) => {
       // Generators are evaluated eagerly; `any(x for x in xs)` works as in
@@ -224,9 +224,9 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
         Map([]),
         Label::bottom(),
         span,
-        (ctx, local_pc) => out.push(ctx.eval(elt).taint(ctx.stamp(local_pc))),
+        (ctx, local_pc) => out.push(ctx.eval(elt).taint(local_pc)),
       )
-      list_item(out, self.stamp(Label::plan()), shape=self.stamp(shape))
+      list_item(out, Label::plan(), shape~)
     }
     DictComp(key~, value~, generators~, span~) => {
       let entries : Map[String, (Item, Item)] = Map([])
@@ -238,8 +238,8 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
         Label::bottom(),
         span,
         (ctx, local_pc) => {
-          let k = ctx.eval(key).taint(ctx.stamp(local_pc))
-          let v = ctx.eval(value).taint(ctx.stamp(local_pc))
+          let k = ctx.eval(key).taint(local_pc)
+          let v = ctx.eval(value).taint(local_pc)
           match key_of(k.value) {
             Some(kk) => entries[kk] = (k, v)
             None =>
@@ -252,8 +252,8 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
         },
       )
       {
-        value: VDict({ entries, shape: self.stamp(shape.join(key_labels)), }),
-        label: self.stamp(Label::plan()),
+        value: VDict({ entries, shape: shape.join(key_labels), }),
+        label: Label::plan(),
       }
     }
     Lambda(args~, body~, span~) => {
@@ -265,10 +265,20 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
           "lambdas may only take plain positional parameters", span,
         )
       }
+      // Lambdas must be pure: a hidden write would escape the static
+      // analysis that keeps control-flow labels sound.
+      let writes = []
+      expr_writes(body, writes)
+      if !writes.is_empty() {
+        raise unsupported(
+          "lambdas must not modify anything (found a write to `\{writes[0]}`)",
+          span,
+        )
+      }
       let params = [..args.posonlyargs, ..args.args].map(a => a.arg)
       {
         value: VFunc(Lambda({ params, body, scopes: self.scopes.copy(), })),
-        label: self.stamp(Label::plan()),
+        label: Label::plan(),
       }
     }
     Starred(span~, ..) =>
@@ -287,7 +297,7 @@ fn Ctx::constant(
   c : @ast.Constant,
   span : @basic.Span,
 ) -> Item raise PlanError {
-  let l = self.stamp(Label::plan())
+  let l = Label::plan()
   match c {
     Int(b) => {
       let i = b.to_int64()
@@ -314,7 +324,7 @@ fn Ctx::load_name(
   match self.lookup(id) {
     Some(v) => v
     None => {
-      let l = self.stamp(Label::plan())
+      let l = Label::plan()
       if self.world.tools.contains(id) {
         { value: VFunc(Tool(id)), label: l, }
       } else if id == "query_ai_assistant" {

@@ -9,14 +9,34 @@
 /// because those conditions did not fire.
 priv struct Ctx {
   world : World
-  host : &Host
   session : Session
+  /// Responses to effects performed so far.
+  memo : Memo
+  /// How many times each effect identity has been requested in this run.
+  seen : Map[String, Int]
   /// Innermost scope last. Comprehension and lambda scopes are pushed on top
   /// of the globals.
   scopes : Array[Map[String, Item]]
   pc : Label
   exit : Ref[Label]
   strict : Bool
+}
+
+///|
+/// Returns the recorded response to `effect`, or suspends the run so the
+/// driver can perform it.
+fn Ctx::effect(
+  self : Ctx,
+  effect : Effect,
+  span : @basic.Span,
+) -> Response raise PlanError {
+  let identity = effect.identity()
+  let n = self.seen.get(identity).unwrap_or(0)
+  self.seen[identity] = n + 1
+  match self.memo.get("\{n}|\{identity}") {
+    Some(r) => r
+    None => raise err(Pending(effect), "waiting for the host", span)
+  }
 }
 
 ///|
@@ -27,17 +47,6 @@ fn Ctx::with_pc(self : Ctx, extra : Label) -> Ctx {
 ///|
 fn Ctx::with_scope(self : Ctx, scope : Map[String, Item]) -> Ctx {
   { ..self, scopes: [..self.scopes, scope], }
-}
-
-///|
-/// Labels a freshly computed value: its data dependencies, plus the control
-/// context under STRICT semantics.
-fn Ctx::stamp(self : Ctx, l : Label) -> Label {
-  if self.strict {
-    l.join(self.pc)
-  } else {
-    l
-  }
 }
 
 ///|
@@ -65,10 +74,22 @@ fn Ctx::lookup(self : Ctx, name : String) -> Item? {
 ///|
 /// Binds `name` in the innermost scope (the globals at top level).
 fn Ctx::assign_name(self : Ctx, name : String, item : Item) -> Unit {
-  let it = item.taint(self.stamp(Label::bottom()))
+  // A variable written here reveals that execution reached this point.
+  let it = item.taint(self.flow())
   match self.scopes.last() {
     Some(scope) => scope[name] = it
     None => self.session.globals[name] = it
+  }
+}
+
+///|
+/// The label that data written at this point must carry: the control
+/// context under STRICT semantics, nothing under NORMAL semantics.
+fn Ctx::flow(self : Ctx) -> Label {
+  if self.strict {
+    self.pc
+  } else {
+    Label::bottom()
   }
 }
 
@@ -380,7 +401,7 @@ fn Ctx::assign(
     Subscript(value~, slice~, span~, ..) => {
       let container = self.eval(value)
       let key = self.eval(slice)
-      let stored = item.taint(self.stamp(key.label))
+      let stored = item.taint(key.label.join(self.flow()))
       match container.value {
         VList(l) => {
           let i = self.index_of(key, l.items.length(), span)
@@ -391,7 +412,7 @@ fn Ctx::assign(
             Some(k) => {
               if !d.entries.contains(k) {
                 // Adding a key changes the dict's shape.
-                d.shape = d.shape.join(self.stamp(key.label))
+                d.shape = d.shape.join(key.label).join(self.flow())
               }
               d.entries[k] = (key, stored)
             }

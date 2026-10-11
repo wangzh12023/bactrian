@@ -69,7 +69,7 @@ fn Ctx::apply(
     VFunc(Builtin("query_ai_assistant")) => self.query_quarantined(a, span)
     VFunc(Builtin(name)) => self.call_builtin(name, a, span)
     VFunc(Method(recv, name)) =>
-      self.call_method(recv, name, a, span).taint(self.stamp(f.label))
+      self.call_method(recv, name, a, span).taint(f.label)
     VFunc(Lambda(fun)) => {
       if fun.params.length() != a.pos.length() || !a.kw.is_empty() {
         raise type_error(
@@ -82,19 +82,16 @@ fn Ctx::apply(
         scope[p] = a.pos[i]
       }
       let ctx = { ..self, scopes: [..fun.scopes, scope], }
-      ctx.eval(fun.body).taint(self.stamp(f.label))
+      ctx.eval(fun.body).taint(f.label)
     }
     VClass(BuiltinType(name)) => self.call_builtin(name, a, span)
     VClass(ErrorType(name)) => {
       let msg = match a.pos {
-        [] => str_item("", self.stamp(Label::plan()))
+        [] => str_item("", Label::plan())
         [x, ..] => x
       }
       let fields : Map[String, Item] = Map([("args", msg)])
-      {
-        value: VRecord({ type_name: name, fields, }),
-        label: self.stamp(msg.deep()),
-      }
+      { value: VRecord({ type_name: name, fields, }), label: msg.deep(), }
     }
     VClass(RecordType(name)) => self.construct(name, a, span)
     other =>
@@ -147,10 +144,7 @@ fn Ctx::construct(
       raise type_error("\{name}(...) has no field '\{p.0}'", span)
     }
   }
-  {
-    value: VRecord({ type_name: name, fields, }),
-    label: self.stamp(Label::plan()),
-  }
+  { value: VRecord({ type_name: name, fields, }), label: Label::plan(), }
 }
 
 ///|
@@ -233,6 +227,7 @@ fn Ctx::call_tool(
       ),
     )
   }
+  let mut approved = false
   match verdict.decision {
     Allow => ()
     Deny(reason) => {
@@ -243,30 +238,30 @@ fn Ctx::call_tool(
       let provenance = verdict.concerns.map(c => {
         (c.culprit, explain_label(c.label, self.session))
       })
-      let ok = self.host.confirm({
-        tool: name,
-        args: args_json,
-        reason,
-        provenance,
-      })
-      if !ok {
-        record(Some(false), None, None)
-        raise err(NotApproved(tool=name), reason, span, label=Label::plan())
+      let request = { tool: name, args: args_json, reason, provenance, }
+      match self.effect(Confirm(request~), span) {
+        Approval(true) => approved = true
+        _ => {
+          record(Some(false), None, None)
+          raise err(NotApproved(tool=name), reason, span, label=Label::plan())
+        }
       }
     }
   }
-  let result = self.host.call_tool(name, args_json) catch {
-    e => {
-      record(Some(true), None, None)
+  let result = match self.effect(CallTool(tool=name, args=args_json), span) {
+    ToolOk(r) => r
+    ToolError(msg) => {
+      record(Some(approved), None, None)
       raise err(
         ToolFailed(tool=name),
-        "\{e}",
+        msg,
         span,
         label=Label::tool(name, origin=id),
       )
     }
+    _ => raise err(ToolFailed(tool=name), "unexpected response", span)
   }
-  let base = self.stamp(Label::tool(name, readers=result.readers, origin=id))
+  let base = Label::tool(name, readers=result.readers, origin=id)
   let ty = Ty::parse(spec.returns) catch { _ => TAny }
   let item = json_to_item(
     result.value,
@@ -285,7 +280,7 @@ fn Ctx::call_tool(
       )
     }
   }
-  record(Some(verdict.decision is Ask(_)), Some(result.value), Some(base))
+  record(Some(approved), Some(result.value), Some(base))
   item
 }
 
@@ -343,22 +338,36 @@ fn Ctx::query_quarantined(
   self.session.next_id += 1
   let prompt_text = prompt.value.to_str()
   let prompt_label = prompt.deep().join(schema.label)
-  let answer = self.host.ask_quarantined(prompt_text, spec) catch {
-    e => {
+  let types = self.all_types()
+  types[spec.name] = spec
+  let json_schema = TRecord(spec.name).to_json_schema(types)
+  let answer = match
+    self.effect(
+      AskQuarantined(prompt=prompt_text, schema=spec, json_schema~),
+      span,
+    ) {
+    Quarantined(a) => a
+    ToolError(msg) => {
       self.session.events.push(
         Quarantined(id~, schema=type_name, prompt_label~, answer=None, span~),
       )
       raise err(
         ToolFailed(tool="query_ai_assistant"),
-        "\{e}",
+        msg,
         span,
         label=prompt_label,
       )
     }
+    _ =>
+      raise err(
+        ToolFailed(tool="query_ai_assistant"),
+        "unexpected response",
+        span,
+      )
   }
   // The answer may depend on anything in the prompt, and on the control
   // context in which it was asked.
-  let base = self.stamp(prompt_label.with_origin(id))
+  let base = prompt_label.with_origin(id)
   match answer {
     NotEnoughInformation => {
       self.session.events.push(

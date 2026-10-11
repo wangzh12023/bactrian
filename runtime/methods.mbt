@@ -49,10 +49,7 @@ fn Ctx::call_method(
       for k, v in r.fields {
         entries["s:" + k] = (str_item(k, recv.label), v)
       }
-      {
-        value: VDict({ entries, shape: recv.label, }),
-        label: self.stamp(recv.label),
-      }
+      { value: VDict({ entries, shape: recv.label, }), label: recv.label, }
     }
     other =>
       raise type_error(
@@ -92,7 +89,7 @@ fn Ctx::str_method(
   let args_label = a.pos.fold(init=Label::bottom(), (acc, x) => {
     acc.join(x.deep())
   })
-  let l = self.stamp(recv.label.join(args_label))
+  let l = recv.label.join(args_label)
   let text = fn(t : String) -> Item { str_item(t, l) }
   let boolean = fn(b : Bool) -> Item { { value: VBool(b), label: l, } }
   let strs = fn(parts : Array[String]) -> Item {
@@ -316,9 +313,10 @@ fn Ctx::list_method(
   a : Args,
   span : @basic.Span,
 ) -> Item raise PlanError {
-  let plan = self.stamp(Label::plan())
+  let plan = Label::plan()
   // Any change made here happens because execution reached this call.
-  let here = self.stamp(recv.label)
+  // Any change made here reveals that execution reached this call.
+  let here = recv.label.join(self.flow())
   match name {
     "append" => {
       match a.pos {
@@ -418,7 +416,7 @@ fn Ctx::list_method(
         [x] => x
         _ => raise type_error("\{name}() takes exactly one argument", span)
       }
-      let mut used = self.stamp(recv.top().join(x.deep()))
+      let mut used = recv.top().join(x.deep())
       let mut count = 0
       let mut first : Int? = None
       for i, el in l.items {
@@ -464,7 +462,7 @@ fn Ctx::list_method(
       l.shape = l.shape.join(here)
       none_item(plan)
     }
-    "copy" => list_item(l.items.copy(), self.stamp(recv.label), shape=l.shape)
+    "copy" => list_item(l.items.copy(), recv.label, shape=l.shape)
     _ => raise type_error("'list' object has no method '\{name}'", span)
   }
 }
@@ -478,8 +476,9 @@ fn Ctx::dict_method(
   a : Args,
   span : @basic.Span,
 ) -> Item raise PlanError {
-  let plan = self.stamp(Label::plan())
-  let here = self.stamp(recv.label)
+  let plan = Label::plan()
+  // Any change made here reveals that execution reached this call.
+  let here = recv.label.join(self.flow())
   let key_arg = fn() -> (Item, String) raise PlanError {
     match a.pos.get(0) {
       Some(k) =>
@@ -576,10 +575,7 @@ fn Ctx::dict_method(
     }
     "copy" => {
       let entries = d.entries.copy()
-      {
-        value: VDict({ entries, shape: d.shape, }),
-        label: self.stamp(recv.label),
-      }
+      { value: VDict({ entries, shape: d.shape, }), label: recv.label, }
     }
     "clear" => {
       d.entries.clear()

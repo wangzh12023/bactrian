@@ -18,7 +18,9 @@ pub(all) enum ErrorKind {
   ToolFailed(tool~ : String)
   /// The plan exceeded the step budget.
   Budget
-} derive(Debug, Eq)
+  /// Not an error: the run stopped at an effect the driver must perform.
+  Pending(Effect)
+} derive(Debug)
 
 ///|
 pub(all) suberror PlanError {
@@ -68,6 +70,7 @@ pub fn ErrorKind::python_name(self : ErrorKind) -> String {
     NotEnoughInformation => "NotEnoughInformationError"
     ToolFailed(..) => "ToolError"
     Budget => "BudgetExceeded"
+    Pending(_) => "Pending"
   }
 }
 

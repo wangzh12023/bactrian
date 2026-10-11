@@ -5,7 +5,7 @@ fn Ctx::call_builtin(
   a : Args,
   span : @basic.Span,
 ) -> Item raise PlanError {
-  let plan = self.stamp(Label::plan())
+  let plan = Label::plan()
   let arity = fn(n : Int) raise PlanError {
     if a.pos.length() != n {
       raise type_error(
@@ -17,7 +17,7 @@ fn Ctx::call_builtin(
   match name {
     "print" => {
       let text = a.pos.map(x => x.value.to_str()).join(" ")
-      let l = a.pos.fold(init=self.stamp(Label::plan()), (acc, x) => {
+      let l = a.pos.fold(init=Label::plan().join(self.pc), (acc, x) => {
         acc.join(x.deep())
       })
       self.session.output.push((text, l))
@@ -38,17 +38,17 @@ fn Ctx::call_builtin(
             span,
           )
       }
-      { value: VInt(n.to_int64()), label: self.stamp(x.top()), }
+      { value: VInt(n.to_int64()), label: x.top(), }
     }
     "str" =>
       match a.pos {
         [] => str_item("", plan)
-        [x] => str_item(x.value.to_str(), self.stamp(x.deep()))
+        [x] => str_item(x.value.to_str(), x.deep())
         _ => raise type_error("str() takes at most 1 argument", span)
       }
     "repr" => {
       arity(1)
-      str_item(a.pos[0].value.repr(), self.stamp(a.pos[0].deep()))
+      str_item(a.pos[0].value.repr(), a.pos[0].deep())
     }
     "int" | "float" | "bool" =>
       match a.pos {
@@ -59,7 +59,7 @@ fn Ctx::call_builtin(
             _ => { value: VBool(false), label: plan, }
           }
         [x] => {
-          let l = self.stamp(x.deep())
+          let l = x.deep()
           match (name, x.value) {
             ("bool", v) => { value: VBool(v.truthy()), label: l, }
             ("int", VStr(s)) => {
@@ -116,9 +116,9 @@ fn Ctx::call_builtin(
           let items = self.iterate(x, span)
           let items = if name == "set" { dedupe(items) } else { items }
           if name == "tuple" {
-            { value: VTuple(items), label: self.stamp(x.top()), }
+            { value: VTuple(items), label: x.top(), }
           } else {
-            list_item(items, self.stamp(x.label), shape=self.stamp(x.top()))
+            list_item(items, x.label, shape=x.top())
           }
         }
         _ => raise type_error("\{name}() takes at most 1 argument", span)
@@ -156,7 +156,7 @@ fn Ctx::call_builtin(
       for p in a.kw {
         entries["s:" + p.0] = (str_item(p.0, plan), p.1)
       }
-      { value: VDict({ entries, shape: self.stamp(shape), }), label: plan, }
+      { value: VDict({ entries, shape, }), label: plan, }
     }
     "range" => {
       let nums = a.pos.map(x => {
@@ -201,7 +201,7 @@ fn Ctx::call_builtin(
         Some({ value: VInt(s), .. }) => s
         _ => 0L
       }
-      let shape = self.stamp(x.top())
+      let shape = x.top()
       let items = self
         .iterate(x, span)
         .mapi((i, el) => {
@@ -211,7 +211,7 @@ fn Ctx::call_builtin(
           ]),
           label: shape,
         })
-      list_item(items, self.stamp(x.label), shape~)
+      list_item(items, x.label, shape~)
     }
     "zip" => {
       let seqs = a.pos.map(x => self.iterate(x, span))
@@ -221,18 +221,14 @@ fn Ctx::call_builtin(
       })
       let items = Array::makei(if seqs.is_empty() { 0 } else { n }, i => {
         value: VTuple(seqs.map(s => s[i])),
-        label: self.stamp(shape),
+        label: shape,
       })
-      list_item(items, self.stamp(shape))
+      list_item(items, shape)
     }
     "reversed" => {
       arity(1)
       let items = self.iterate(a.pos[0], span).rev()
-      list_item(
-        items,
-        self.stamp(a.pos[0].label),
-        shape=self.stamp(a.pos[0].top()),
-      )
+      list_item(items, a.pos[0].label, shape=a.pos[0].top())
     }
     "sorted" => {
       arity(1)
@@ -250,7 +246,7 @@ fn Ctx::call_builtin(
         }
         (k, el)
       })
-      let mut order_label = self.stamp(x.top())
+      let mut order_label = x.top()
       for p in keyed {
         order_label = order_label.join(p.0.deep())
       }
@@ -275,7 +271,7 @@ fn Ctx::call_builtin(
         raise e
       }
       // The order of the result depends on every key.
-      list_item(keyed.map(p => p.1), self.stamp(x.label), shape=order_label)
+      list_item(keyed.map(p => p.1), x.label, shape=order_label)
     }
     "sum" => {
       let x = match a.pos {
@@ -289,7 +285,7 @@ fn Ctx::call_builtin(
       for el in self.iterate(x, span) {
         acc = self.binop(Add, acc, el, span)
       }
-      acc.taint(self.stamp(x.top()))
+      acc.taint(x.top())
     }
     "min" | "max" => {
       let candidates = match a.pos {
@@ -333,14 +329,14 @@ fn Ctx::call_builtin(
           best_key = k
         }
       }
-      best.taint(self.stamp(used))
+      best.taint(used)
     }
     "abs" => {
       arity(1)
       let x = a.pos[0]
       match x.value {
-        VInt(i) => { value: VInt(i.abs()), label: self.stamp(x.label), }
-        VFloat(f) => { value: VFloat(f.abs()), label: self.stamp(x.label), }
+        VInt(i) => { value: VInt(i.abs()), label: x.label, }
+        VFloat(f) => { value: VFloat(f.abs()), label: x.label, }
         other =>
           raise type_error(
             "bad operand type for abs(): '\{other.type_name()}'",
@@ -357,9 +353,7 @@ fn Ctx::call_builtin(
         Some({ value: VInt(d), .. }) => Some(d.to_int())
         _ => None
       }
-      let l = self.stamp(
-        a.pos.fold(init=Label::bottom(), (acc, y) => acc.join(y.label)),
-      )
+      let l = a.pos.fold(init=Label::bottom(), (acc, y) => acc.join(y.label))
       match (as_number(x.value), digits) {
         (Some(n), None) =>
           { value: VInt(round_half_even(n).to_int64()), label: l, }
@@ -377,7 +371,7 @@ fn Ctx::call_builtin(
     "any" | "all" => {
       arity(1)
       let x = a.pos[0]
-      let mut used = self.stamp(x.top())
+      let mut used = x.top()
       let want = name == "any"
       for el in self.iterate(x, span) {
         used = used.join(el.deep())
@@ -405,11 +399,11 @@ fn Ctx::call_builtin(
           })
         _ => raise type_error("isinstance() arg 2 must be a type", span)
       }
-      { value: VBool(ok), label: self.stamp(x.label), }
+      { value: VBool(ok), label: x.label, }
     }
     "type" => {
       arity(1)
-      str_item(a.pos[0].value.type_name(), self.stamp(a.pos[0].label))
+      str_item(a.pos[0].value.type_name(), a.pos[0].label)
     }
     _ => raise err(Runtime("NameError"), "name '\{name}' is not defined", span)
   }

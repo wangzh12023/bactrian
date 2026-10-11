@@ -135,7 +135,7 @@ pub fn Ty::to_json_schema(self : Ty, types : Map[String, TypeSpec]) -> Json {
 pub(all) struct PathLabels {
   parties : Map[String, Array[@label.Source]]
   readers : Map[String, @label.Readers]
-}
+} derive(Debug)
 
 ///|
 pub fn PathLabels::empty() -> PathLabels {

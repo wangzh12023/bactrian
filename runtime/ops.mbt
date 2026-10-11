@@ -7,7 +7,7 @@ fn Ctx::binop(
   span : @basic.Span,
 ) -> Item raise PlanError {
   // The result of combining two values depends on everything in both.
-  let lbl = self.stamp(l.deep().join(r.deep()))
+  let lbl = l.deep().join(r.deep())
   let bad = fn() -> PlanError {
     type_error(
       "unsupported operand type(s) for \{op.symbol()}: '\{l.value.type_name()}' and '\{r.value.type_name()}'",
@@ -21,11 +21,7 @@ fn Ctx::binop(
         ..a.items.map(x => x.taint(l.label)),
         ..b.items.map(x => x.taint(r.label)),
       ]
-      list_item(
-        items,
-        self.stamp(l.label.join(r.label)),
-        shape=self.stamp(l.top().join(r.top())),
-      )
+      list_item(items, l.label.join(r.label), shape=l.top().join(r.top()))
     }
     (Add, VTuple(a), VTuple(b)) => { value: VTuple([..a, ..b]), label: lbl, }
     (Mult, VStr(s), VInt(n)) | (Mult, VInt(n), VStr(s)) => {
@@ -289,10 +285,10 @@ fn Ctx::attribute(
   match obj.value {
     VRecord(r) =>
       match r.fields.get(attr) {
-        Some(v) => v.taint(self.stamp(obj.label))
+        Some(v) => v.taint(obj.label)
         None =>
           if method_exists(obj.value, attr) {
-            { value: VFunc(Method(obj, attr)), label: self.stamp(obj.label), }
+            { value: VFunc(Method(obj, attr)), label: obj.label, }
           } else {
             raise err(
               Runtime("AttributeError"),
@@ -303,7 +299,7 @@ fn Ctx::attribute(
       }
     _ =>
       if method_exists(obj.value, attr) {
-        { value: VFunc(Method(obj, attr)), label: self.stamp(obj.label), }
+        { value: VFunc(Method(obj, attr)), label: obj.label, }
       } else {
         raise err(
           Runtime("AttributeError"),
@@ -323,7 +319,7 @@ fn Ctx::subscript(
 ) -> Item raise PlanError {
   // Which element is read depends on the key; whether it exists depends on
   // the container's shape.
-  let via = self.stamp(obj.label.join(key.label))
+  let via = obj.label.join(key.label)
   match obj.value {
     VList(l) => {
       let i = self.index_of(key, l.items.length(), span)
@@ -402,7 +398,7 @@ fn Ctx::slice(
   if st == 0 {
     raise err(Runtime("ValueError"), "slice step cannot be zero", span)
   }
-  let via = self.stamp(obj.label.join(l1).join(l2).join(l3))
+  let via = obj.label.join(l1).join(l2).join(l3)
   let pick = fn(n : Int) -> Array[Int] {
     let norm = fn(i : Int?, default : Int) -> Int {
       match i {

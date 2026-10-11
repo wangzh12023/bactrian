@@ -1,7 +1,7 @@
 ///|
 /// How labels follow control flow.
 pub(all) enum Mode {
-  /// Values created under a condition carry the condition's label, and so do
+  /// Values written under a condition carry the condition's label, and so do
   /// variables a skipped branch would have written (no implicit flows).
   Strict
   /// Only explicit data dependencies are tracked, like CaMeL's NORMAL mode.
@@ -10,9 +10,15 @@ pub(all) enum Mode {
 } derive(Eq, Debug)
 
 ///|
-/// The result of running a plan.
+/// The result of one run of a plan.
 pub(all) enum Outcome {
+  /// The plan ran to the end.
   Completed
+  /// The plan stopped at an effect whose response is not yet recorded. The
+  /// driver performs it, adds the response to the memo with `Memo::add(key,
+  /// response)`, and runs the plan again.
+  Suspended(key~ : String, effect~ : Effect)
+  /// The plan failed.
   Failed(PlanError)
 }
 
@@ -28,43 +34,65 @@ pub fn parse_plan(source : String) -> @ast.Module raise PlanError {
 }
 
 ///|
-/// Runs a plan in `session`. Effects go through `host`; every tool call is
-/// checked against `world.policy` first. Variables assigned by the plan stay
-/// in the session, so a corrected plan can continue where a failing one
-/// stopped without repeating its effects.
-pub fn run_plan(
+/// Runs a plan once.
+///
+/// The run is a pure function of the plan, the world and the memo: every
+/// effect it needs is looked up in `memo`, and the first one that is missing
+/// suspends the run. Each run starts from a fresh session, so a suspended run
+/// simply runs again once the response is known.
+pub fn run_once(
   world : World,
-  host : &Host,
-  session : Session,
+  memo : Memo,
   source : String,
   mode? : Mode = Strict,
-) -> Outcome {
-  let m = parse_plan(source) catch { e => return Failed(e) }
-  run_module(world, host, session, m, mode~)
-}
-
-///|
-pub fn run_module(
-  world : World,
-  host : &Host,
-  session : Session,
-  m : @ast.Module,
-  mode? : Mode = Strict,
-) -> Outcome {
+) -> (Outcome, Session) {
+  let session = Session::new()
+  let m = parse_plan(source) catch { e => return (Failed(e), session) }
   let ctx : Ctx = {
     world,
-    host,
     session,
+    memo,
+    seen: Map([]),
     scopes: [],
     pc: @label.Label::bottom(),
     exit: Ref(@label.Label::bottom()),
     strict: mode is Strict,
   }
-  let flow = ctx.exec_block(m.body) catch { e => return Failed(e) }
+  let flow = ctx.exec_block(m.body) catch {
+    PlanError(kind=Pending(effect), ..) => {
+      let identity = effect.identity()
+      let n = ctx.seen.get(identity).unwrap_or(1) - 1
+      return (Suspended(key="\{n}|\{identity}", effect~), session)
+    }
+    e => return (Failed(e), session)
+  }
   match flow {
-    Normal => Completed
+    Normal => (Completed, session)
     Break | Continue =>
-      Failed(unsupported("`break`/`continue` outside a loop", m.span))
+      (
+        Failed(unsupported("`break`/`continue` outside a loop", m.span)),
+        session,
+      )
+  }
+}
+
+///|
+/// Runs a plan to the end, performing its effects with `host`.
+///
+/// Returns the final outcome (never `Suspended`) and the session of the last
+/// run, which holds the trace and the printed output.
+pub fn drive(
+  world : World,
+  host : &Host,
+  source : String,
+  memo? : Memo = Memo::new(),
+  mode? : Mode = Strict,
+) -> (Outcome, Session) {
+  for ;; {
+    match run_once(world, memo, source, mode~) {
+      (Suspended(key~, effect~), _) => memo.add(key, host.perform(effect))
+      done => return done
+    }
   }
 }
 
