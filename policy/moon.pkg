@@ -5,6 +5,8 @@ import {
 
 import {
   "wangzh12023/bactrian/label",
+  "moonbitlang/core/quickcheck" @qc,
+  "moonbitlang/core/debug",
 } for "test"
 
 warnings = "-implicit_impl_as_method"
