@@ -98,7 +98,7 @@ test "error messages derived from untrusted data are redacted" {
   assert_true(feedback.contains("ValueError"))
   assert_true(feedback.contains("details removed"))
   assert_false(feedback.contains("IGNORE"))
-  assert_true(t.final is Some(Done(output="54")))
+  assert_true(t.ending is Some(Done(output="54")))
   // The file was read once: the second attempt reused the recorded result.
   inspect(performed.join(" "), content="read_file({\"path\":\"note.txt\"})")
 }
@@ -114,7 +114,7 @@ test "errors caused by the plan itself are shown in full" {
   assert_true(
     feedback.contains("NameError: name 'undefined_name' is not defined"),
   )
-  assert_true(t.final is Some(Done(output="hi")))
+  assert_true(t.ending is Some(Done(output="hi")))
 }
 
 ///|
@@ -140,7 +140,7 @@ test "a corrected plan never repeats a side effect" {
     performed.join(" "),
     content="post({\"text\":\"hello\",\"to\":\"bob\"}) read_file({\"path\":\"note.txt\"})",
   )
-  assert_true(t.final is Some(Done(output="3")))
+  assert_true(t.ending is Some(Done(output="3")))
 }
 
 ///|
@@ -151,7 +151,7 @@ test "a denial ends the task instead of inviting a workaround" {
     #|post(to=read_file("note.txt"), text="hi")
     #|```
   ignore(drive(t, [plan], "mallory"))
-  match t.final {
+  match t.ending {
     Some(Declined(tool~, reason~)) => {
       inspect(tool, content="post")
       inspect(reason, content="the recipient was not chosen by you")
@@ -171,14 +171,14 @@ test "replies without code get a precise request to retry" {
   assert_true(
     t.messages[3].content.contains("did not contain a ```python code block"),
   )
-  assert_true(t.final is Some(Done(output="hi")))
+  assert_true(t.ending is Some(Done(output="hi")))
 }
 
 ///|
 test "the planner gives up after the attempt budget" {
   let t = @agent.Task::new(world(), "Say hi", max_attempts=2)
   ignore(drive(t, ["no code", "still no code"], ""))
-  assert_true(t.final is Some(GaveUp(..)))
+  assert_true(t.ending is Some(GaveUp(..)))
 }
 
 ///|

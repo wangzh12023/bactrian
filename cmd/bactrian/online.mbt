@@ -89,7 +89,7 @@ async fn run_request(request : String, attack : Int?) -> Unit {
   if t.session is Some(s) {
     print_trace(s)
   }
-  match t.final {
+  match t.ending {
     Some(Done(output~)) => println(green("\n✓ done") + "\n" + output)
     Some(Blocked(tool~, reason~)) =>
       println(red("\n✗ blocked \{tool}: \{reason}"))

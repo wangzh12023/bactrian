@@ -293,7 +293,7 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
 
 ///|
 fn Ctx::constant(
-  self : Ctx,
+  _ : Ctx,
   c : @ast.Constant,
   span : @basic.Span,
 ) -> Item raise PlanError {

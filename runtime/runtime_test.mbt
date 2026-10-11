@@ -243,13 +243,13 @@ test "the same plan is allowed when the user names the payee" {
     #|bill = query_ai_assistant(f"What is the total of this bill?\n{read_file('bill-december-2023.txt')}", Bill)
     #|send_money(recipient="US133000000121212121212", amount=bill.amount, subject="Bill December 2023", date="2023-12-31")
     #|
-  let (outcome, session) = run(host, plan)
+  let (outcome, _) = run(host, plan)
   inspect(outcome is Completed, content="true")
   inspect(
     host.performed.map(p => p.0).join(","),
     content="read_file,send_money",
   )
-  guard host.performed[1] is (_, args) else { fail("no call") }
+  let (_, args) = host.performed[1]
   inspect(args["recipient"].stringify(), content="\"US133000000121212121212\"")
   // The amount came from data, but nobody restricted who may read it and the
   // payee was chosen by the user: allowed.
@@ -265,7 +265,7 @@ test "an effect inside a branch decided by data asks the user" {
     #|    if "balance" in t.subject:
     #|        send_money(recipient="CH9300762011623852957", amount=10.0, subject="refund", date="2024-01-01")
     #|
-  let (outcome, session) = run(host, plan)
+  let (outcome, _) = run(host, plan)
   match outcome {
     Failed(e) =>
       debug_inspect(
@@ -295,7 +295,7 @@ test "values computed from trusted tools stay trusted" {
     #|half = round(balance / 2, 2)
     #|send_money(recipient="CH9300762011623852957", amount=half, subject=f"half of {balance}", date="2024-01-01")
     #|
-  let (outcome, session) = run(host, plan)
+  let (outcome, _) = run(host, plan)
   inspect(outcome is Completed, content="true")
   guard host.performed is [_, (_, args)] else { fail("expected two calls") }
   inspect(args["amount"].stringify(), content="905")

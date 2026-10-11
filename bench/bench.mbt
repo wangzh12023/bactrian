@@ -124,11 +124,11 @@ pub async fn run_cell(
       }
     }
   }
-  let output = match t.final {
+  let output = match t.ending {
     Some(Done(output~)) => output
     _ => ""
   }
-  let ending = match t.final {
+  let ending = match t.ending {
     Some(Done(..)) => "done"
     Some(Blocked(..)) => "blocked"
     Some(Declined(..)) => "declined"

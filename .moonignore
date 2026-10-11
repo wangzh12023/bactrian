@@ -1,0 +1,5 @@
+docs/img/
+docs/playground/
+.github/
+.githooks/
+_build/

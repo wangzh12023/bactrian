@@ -56,7 +56,7 @@ pub(all) struct Task {
   attempts : Array[Attempt]
   /// The session of the latest run (trace and printed output).
   mut session : @runtime.Session?
-  mut final : Final?
+  mut ending : Final?
 }
 
 ///|
@@ -85,23 +85,23 @@ pub fn Task::new(
     replies: [],
     attempts: [],
     session: None,
-    final: None,
+    ending: None,
   }
 }
 
 ///|
 /// Advances the task as far as possible without outside help. Returns what
 /// the driver must provide next, or `None` once the task has ended (see
-/// `final`).
+/// `ending`).
 pub fn Task::step(self : Task) -> Need? {
   for ;; {
-    if self.final is Some(_) {
+    if self.ending is Some(_) {
       return None
     }
     if self.attempts.length() == self.replies.length() {
       // Every reply so far has been tried: ask for a new program.
       if self.attempts.length() >= self.max_attempts {
-        self.final = Some(
+        self.ending = Some(
           GaveUp(
             reason="no working program after \{self.max_attempts} attempts",
           ),
@@ -128,21 +128,21 @@ pub fn Task::step(self : Task) -> Need? {
       Suspended(key~, effect~) => return Some(Run(key~, effect~))
       Completed => {
         self.attempts.push({ code, outcome: "completed", })
-        self.final = Some(Done(output=session.printed()))
+        self.ending = Some(Done(output=session.printed()))
       }
       Failed(e) =>
         match e.kind() {
           PolicyDenied(tool~) => {
             self.attempts.push({ code, outcome: "blocked by the policy", })
-            self.final = Some(Blocked(tool~, reason=e.message()))
+            self.ending = Some(Blocked(tool~, reason=e.message()))
           }
           NotApproved(tool~) => {
             self.attempts.push({ code, outcome: "declined by the user", })
-            self.final = Some(Declined(tool~, reason=e.message()))
+            self.ending = Some(Declined(tool~, reason=e.message()))
           }
           Budget => {
             self.attempts.push({ code, outcome: e.message(), })
-            self.final = Some(GaveUp(reason=e.message()))
+            self.ending = Some(GaveUp(reason=e.message()))
           }
           _ => self.retry(code, feedback(code, e, self.world.policy))
         }

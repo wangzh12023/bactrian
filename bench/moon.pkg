@@ -3,7 +3,6 @@ import {
   "wangzh12023/bactrian/runtime",
   "wangzh12023/bactrian/llm",
   "wangzh12023/bactrian/suites/banking",
-  "moonbitlang/async",
   "moonbitlang/core/json",
 }
 

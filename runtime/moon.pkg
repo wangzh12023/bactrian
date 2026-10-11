@@ -11,7 +11,6 @@ import {
 }
 
 import {
-  "wangzh12023/bactrian/label",
   "wangzh12023/bactrian/policy",
   "wangzh12023/bactrian/runtime",
   "moonbitlang/core/quickcheck" @qc,

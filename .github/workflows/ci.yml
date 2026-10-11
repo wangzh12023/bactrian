@@ -26,10 +26,10 @@ jobs:
         run: |
           moon version --all
           moon update
-      - name: Check (wasm and js)
+      - name: Check (wasm and js, warnings are errors)
         run: |
-          moon check
-          moon check --target js
+          moon check --deny-warn
+          moon check --target js --deny-warn
       - name: Test (wasm)
         run: moon test
       - name: Test (js)

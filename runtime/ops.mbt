@@ -277,7 +277,7 @@ fn contains(
 
 ///|
 fn Ctx::attribute(
-  self : Ctx,
+  _ : Ctx,
   obj : Item,
   attr : String,
   span : @basic.Span,

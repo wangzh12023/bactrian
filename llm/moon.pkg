@@ -6,10 +6,4 @@ import {
   "moonbitlang/core/json",
 }
 
-import {
-  "wangzh12023/bactrian/agent",
-  "wangzh12023/bactrian/runtime",
-  "wangzh12023/bactrian/llm",
-} for "test"
-
 warnings = "-implicit_impl_as_method"
