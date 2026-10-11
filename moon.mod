@@ -23,4 +23,6 @@ preferred_target = "wasm"
 
 import {
   "marianoguerra/pure-py@0.10.0",
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/x@0.5.5",
 }

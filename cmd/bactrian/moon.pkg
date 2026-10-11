@@ -1,0 +1,16 @@
+import {
+  "wangzh12023/bactrian/agent",
+  "wangzh12023/bactrian/runtime",
+  "wangzh12023/bactrian/policy",
+  "wangzh12023/bactrian/llm",
+  "wangzh12023/bactrian/bench",
+  "wangzh12023/bactrian/suites/banking",
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+  "moonbitlang/x/fs",
+}
+
+pkgtype(kind: "executable")
+
+warnings = "-implicit_impl_as_method"
