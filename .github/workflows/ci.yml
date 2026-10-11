@@ -22,8 +22,10 @@ jobs:
         with:
           version: '0.10.14+7d59c7ec9'
           core-version: '0.10.14+7d59c7ec9'
-      - name: Toolchain
-        run: moon version --all
+      - name: Toolchain and registry
+        run: |
+          moon version --all
+          moon update
       - name: Check (wasm and js)
         run: |
           moon check
@@ -50,6 +52,7 @@ jobs:
           core-version: '0.10.14+7d59c7ec9'
       - name: Build the playground
         run: |
+          moon update
           moon build web --target js --release
           mkdir -p site
           cp web/static/index.html web/static/style.css site/

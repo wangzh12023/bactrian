@@ -168,7 +168,8 @@ pub fn extract_code(reply : String) -> String? {
   }
   match start {
     // An unterminated fence: take everything after it.
-    Some(s) => Some(lines[s:].iter().collect().join("\n") + "\n")
+    Some(s) =>
+      Some(lines[s:].iter().collect().join("\n").trim_end().to_owned() + "\n")
     None => None
   }
 }
