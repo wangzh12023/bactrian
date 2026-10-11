@@ -1,0 +1,114 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wangzh12023/bactrian/policy"
+
+import {
+  "moonbitlang/core/debug",
+  "wangzh12023/bactrian/label",
+}
+
+// Values
+pub const CONTEXT : String = "<context>"
+
+pub fn confirm(Cond, String) -> Rule
+
+pub fn effect(String, audience? : Array[String], Array[Rule]) -> ToolPolicy
+
+pub fn parse_policy(String) -> Policy raise PolicySyntaxError
+
+pub fn read(String) -> ToolPolicy
+
+pub fn require(Cond, String) -> Rule
+
+// Errors
+pub(all) suberror PolicySyntaxError {
+  PolicySyntaxError(line~ : Int, message~ : String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct ArgView {
+  value : Json
+  label : @label.Label
+}
+
+pub(all) struct CallView {
+  tool : String
+  args : Map[String, ArgView]
+  context : @label.Label
+}
+pub fn CallView::arg(Self, String) -> ArgView?
+
+pub(all) struct Concern {
+  severity : Severity
+  reason : String
+  culprit : String
+  label : @label.Label
+} derive(@debug.Debug)
+
+pub(all) enum Cond {
+  Trusted(String)
+  Public(String)
+  ReadableBy(String, Array[String])
+  ContextTrusted
+  AtMost(String, Double)
+  OneOf(String, Array[Json])
+  Present(String)
+  All(Array[Cond])
+  Any(Array[Cond])
+  Not(Cond)
+} derive(@debug.Debug)
+pub fn Cond::arguments(Self) -> Array[String]
+pub fn Cond::render(Self) -> String
+
+pub(all) enum Decision {
+  Allow
+  Deny(String)
+  Ask(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Policy {
+  name : String
+  tools : Map[String, ToolPolicy]
+  trusted_tools : Array[String]
+  trusted_parties : Array[String]
+  self_ids : Array[String]
+  context_integrity : Severity?
+  unknown_tool : Decision
+}
+pub fn Policy::check(Self, CallView) -> Verdict
+pub fn Policy::is_trusted(Self, @label.Label) -> Bool
+pub fn Policy::new(String, Array[ToolPolicy], trusted_tools? : Array[String], trusted_parties? : Array[String], self_ids? : Array[String], context_integrity? : Severity, unknown_tool? : Decision) -> Self
+pub fn Policy::render(Self) -> String
+pub fn Policy::trusts(Self, @label.Source) -> Bool
+pub fn Policy::validate(Self, Map[String, Array[String]]) -> Array[String]
+
+pub(all) struct Rule {
+  cond : Cond
+  otherwise : Severity
+  reason : String
+} derive(@debug.Debug)
+
+pub(all) enum Severity {
+  Block
+  Confirm
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ToolKind {
+  Read
+  Effect
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ToolPolicy {
+  tool : String
+  kind : ToolKind
+  audience : Array[String]
+  rules : Array[Rule]
+} derive(@debug.Debug)
+
+pub(all) struct Verdict {
+  decision : Decision
+  concerns : Array[Concern]
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,98 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wangzh12023/bactrian/suites/banking"
+
+import {
+  "moonbitlang/core/debug",
+  "wangzh12023/bactrian/policy",
+  "wangzh12023/bactrian/runtime",
+}
+
+// Values
+pub const ATTACKER_IBAN : String = "US133000000121212121212"
+
+pub const USER_IBAN : String = "DE89370400440532013000"
+
+pub fn attacked_bank(UserTask, InjectionTask) -> Bank
+
+pub let examples : Array[String]
+
+pub fn important_instructions(String) -> String
+
+pub fn injection_tasks() -> Array[InjectionTask]
+
+pub let notes : Array[String]
+
+pub fn policy() -> @policy.Policy
+
+pub let policy_text : String
+
+pub fn reference_plan(String) -> String?
+
+pub fn tools() -> Array[@runtime.ToolSpec]
+
+pub fn types() -> Array[@runtime.TypeSpec]
+
+pub fn user_tasks() -> Array[UserTask]
+
+pub fn world() -> @runtime.World
+
+// Errors
+
+// Types and methods
+pub(all) struct Bank {
+  mut balance : Double
+  iban : String
+  transactions : Array[Transaction]
+  scheduled : Array[Transaction]
+  files : Map[String, String]
+  mut first_name : String
+  mut last_name : String
+  mut street : String
+  mut city : String
+  mut password : String
+} derive(Eq, @debug.Debug)
+pub fn Bank::call(Self, String, Map[String, Json]) -> @runtime.ToolResult raise
+pub fn Bank::new(injections? : Array[(Vector, String)]) -> Self
+pub fn Bank::snapshot(Self) -> Self
+
+pub(all) struct BankHost {
+  bank : Bank
+  quarantined : (String, @runtime.TypeSpec, Json) -> @runtime.Response
+  approve : (@runtime.ConfirmRequest) -> Bool
+}
+pub impl @runtime.Host for BankHost
+
+pub(all) struct InjectionTask {
+  id : String
+  goal : String
+  security : (Bank, Bank) -> Bool
+}
+
+pub(all) struct Transaction {
+  id : Int
+  sender : String
+  recipient : String
+  amount : Double
+  subject : String
+  date : String
+  recurring : Bool
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct UserTask {
+  id : String
+  prompt : String
+  vectors : Array[Vector]
+  utility : (String, Bank, Bank) -> Bool
+}
+
+pub(all) enum Vector {
+  BillText
+  IncomingTransaction
+  LandlordNotice
+  AddressChange
+} derive(Eq, @debug.Debug)
+pub fn Vector::all() -> Array[Self]
+
+// Type aliases
+
+// Traits

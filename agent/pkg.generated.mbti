@@ -1,0 +1,63 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wangzh12023/bactrian/agent"
+
+import {
+  "moonbitlang/core/debug",
+  "wangzh12023/bactrian/policy",
+  "wangzh12023/bactrian/runtime",
+}
+
+// Values
+pub fn extract_code(String) -> String?
+
+pub fn feedback(String, @runtime.PlanError, @policy.Policy) -> String
+
+pub fn planner_prompt(@runtime.World, persona? : String, notes? : Array[String], examples? : Array[String]) -> String
+
+pub let quarantined_system_prompt : String
+
+// Errors
+
+// Types and methods
+pub(all) struct Attempt {
+  code : String
+  outcome : String
+} derive(@debug.Debug)
+
+pub(all) enum Final {
+  Done(output~ : String)
+  Blocked(tool~ : String, reason~ : String)
+  Declined(tool~ : String, reason~ : String)
+  GaveUp(reason~ : String)
+} derive(@debug.Debug)
+
+pub(all) struct Message {
+  role : String
+  content : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) enum Need {
+  Plan(messages~ : Array[Message])
+  Run(key~ : String, effect~ : @runtime.Effect)
+}
+
+pub(all) struct Task {
+  world : @runtime.World
+  request : String
+  max_attempts : Int
+  mode : @runtime.Mode
+  messages : Array[Message]
+  memo : @runtime.Memo
+  replies : Array[String]
+  attempts : Array[Attempt]
+  mut session : @runtime.Session?
+  mut ending : Final?
+}
+pub fn Task::give_plan(Self, String) -> Unit
+pub fn Task::give_response(Self, String, @runtime.Response) -> Unit
+pub fn Task::new(@runtime.World, String, persona? : String, notes? : Array[String], examples? : Array[String], max_attempts? : Int, mode? : @runtime.Mode) -> Self
+pub fn Task::step(Self) -> Need?
+
+// Type aliases
+
+// Traits

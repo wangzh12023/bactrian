@@ -1,0 +1,41 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wangzh12023/bactrian/llm"
+
+import {
+  "moonbitlang/core/debug",
+  "wangzh12023/bactrian/agent",
+  "wangzh12023/bactrian/runtime",
+}
+
+// Values
+pub async fn complete(Endpoint, ArrayView[@agent.Message], json_mode? : Bool) -> String
+
+pub fn parse_quarantined(String) -> @runtime.QAnswer
+
+pub fn parse_response(String) -> String raise LlmError
+
+pub async fn post_json(Endpoint, Json) -> Json
+
+pub fn quarantined_messages(String, @runtime.TypeSpec, Json) -> Array[@agent.Message]
+
+// Errors
+pub(all) suberror LlmError {
+  Http(status~ : Int, body~ : String)
+  BadResponse(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct Endpoint {
+  base_url : String
+  api_key : String
+  model : String
+  temperature : Double
+  max_tokens : Int
+} derive(@debug.Debug)
+pub fn Endpoint::new(String, String, String, temperature? : Double, max_tokens? : Int) -> Self
+pub fn Endpoint::request_body(Self, ArrayView[@agent.Message], json_mode? : Bool) -> Json
+pub fn Endpoint::url(Self) -> String
+
+// Type aliases
+
+// Traits

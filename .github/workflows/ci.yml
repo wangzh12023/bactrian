@@ -36,6 +36,11 @@ jobs:
         run: moon test --target js
       - name: Format
         run: moon fmt --check
+      - name: Public interfaces are up to date
+        if: runner.os == 'Linux'
+        run: |
+          moon info
+          git diff --exit-code -- '*.mbti'
       - name: Offline demo
         run: moon run cmd/bactrian -- demo
       - name: Policy file check

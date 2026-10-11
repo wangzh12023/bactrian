@@ -1,0 +1,276 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wangzh12023/bactrian/runtime"
+
+import {
+  "marianoguerra/pure-py/ast",
+  "marianoguerra/pure-py/basic",
+  "moonbitlang/core/debug",
+  "wangzh12023/bactrian/label",
+  "wangzh12023/bactrian/policy",
+}
+
+// Values
+pub fn as_number(Value) -> Double?
+
+pub fn canonical_json(Json) -> String
+
+pub fn drive(World, &Host, String, memo? : Memo, mode? : Mode) -> (Outcome, Session)
+
+pub fn explain_label(@label.Label, Session) -> String
+
+pub fn json_to_item(Json, Ty, @label.Label, Map[String, TypeSpec], paths? : PathLabels) -> Item raise ShapeError
+
+pub fn key_of(Value) -> String?
+
+pub fn list_item(Array[Item], @label.Label, shape? : @label.Label) -> Item
+
+pub fn none_item(@label.Label) -> Item
+
+pub fn parse_plan(String) -> @ast.Module raise PlanError
+
+pub fn run_once(World, Memo, String, mode? : Mode) -> (Outcome, Session)
+
+pub fn str_item(String, @label.Label) -> Item
+
+pub fn values_compare(Value, Value) -> Int?
+
+pub fn values_equal(Value, Value) -> Bool
+
+// Errors
+pub(all) suberror PlanError {
+  PlanError(kind~ : ErrorKind, message~ : String, span~ : @basic.Span, label~ : @label.Label)
+} derive(@debug.Debug)
+pub fn PlanError::kind(Self) -> ErrorKind
+pub fn PlanError::label(Self) -> @label.Label
+pub fn PlanError::message(Self) -> String
+pub fn PlanError::span(Self) -> @basic.Span
+
+pub(all) suberror ShapeError {
+  ShapeError(String)
+} derive(@debug.Debug)
+
+pub(all) suberror TypeSyntaxError {
+  TypeSyntaxError(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) enum ClassRef {
+  BuiltinType(String)
+  RecordType(String)
+  ErrorType(String)
+}
+pub impl Eq for ClassRef
+
+pub(all) struct ConfirmRequest {
+  tool : String
+  args : Map[String, Json]
+  reason : String
+  provenance : Array[(String, String)]
+} derive(@debug.Debug)
+
+pub(all) struct DictObj {
+  entries : Map[String, (Item, Item)]
+  mut shape : @label.Label
+}
+
+pub(all) enum Effect {
+  CallTool(tool~ : String, args~ : Map[String, Json])
+  AskQuarantined(prompt~ : String, schema~ : TypeSpec, json_schema~ : Json)
+  Confirm(request~ : ConfirmRequest)
+} derive(@debug.Debug)
+pub fn Effect::identity(Self) -> String
+
+pub(all) enum ErrorKind {
+  Syntax
+  Unsupported
+  Runtime(String)
+  PolicyDenied(tool~ : String)
+  NotApproved(tool~ : String)
+  NotEnoughInformation
+  ToolFailed(tool~ : String)
+  Budget
+  Pending(Effect)
+} derive(@debug.Debug)
+pub fn ErrorKind::python_name(Self) -> String
+
+pub(all) enum Event {
+  ToolCall(id~ : Int, tool~ : String, args~ : Map[String, Json], arg_labels~ : Map[String, @label.Label], context~ : @label.Label, verdict~ : @policy.Verdict, approved~ : Bool?, result~ : Json?, result_label~ : @label.Label?, span~ : @basic.Span)
+  Quarantined(id~ : Int, schema~ : String, prompt_label~ : @label.Label, answer~ : Json?, span~ : @basic.Span)
+  Print(text~ : String, label~ : @label.Label)
+}
+
+pub(all) struct FieldSpec {
+  name : String
+  type_ : String
+  doc : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Func {
+  Builtin(String)
+  Tool(String)
+  Method(Item, String)
+  Lambda(LambdaObj)
+}
+
+pub(all) struct Item {
+  value : Value
+  label : @label.Label
+}
+pub fn Item::deep(Self) -> @label.Label
+pub fn Item::new(Value, @label.Label) -> Self
+pub fn Item::taint(Self, @label.Label) -> Self
+pub fn Item::top(Self) -> @label.Label
+pub fn Item::with_label(Self, @label.Label) -> Self
+
+pub(all) struct LambdaObj {
+  params : Array[String]
+  body : @ast.Expr
+  scopes : Array[Map[String, Item]]
+}
+
+pub(all) struct Limits {
+  max_steps : Int
+  max_calls : Int
+  max_list : Int
+}
+pub fn Limits::default() -> Self
+
+pub(all) struct ListObj {
+  items : Array[Item]
+  mut shape : @label.Label
+}
+
+pub(all) struct Memo {
+  entries : Map[String, Response]
+}
+pub fn Memo::add(Self, String, Response) -> Unit
+pub fn Memo::get(Self, String) -> Response?
+pub fn Memo::length(Self) -> Int
+pub fn Memo::new() -> Self
+
+pub(all) enum Mode {
+  Strict
+  Normal
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Outcome {
+  Completed
+  Suspended(key~ : String, effect~ : Effect)
+  Failed(PlanError)
+} derive(@debug.Debug)
+
+pub(all) struct Param {
+  name : String
+  type_ : String
+  required : Bool
+  doc : String
+} derive(Eq, @debug.Debug)
+pub fn Param::new(String, String, required? : Bool, doc? : String) -> Self
+
+pub(all) struct PathLabels {
+  parties : Map[String, Array[@label.Source]]
+  readers : Map[String, @label.Readers]
+} derive(@debug.Debug)
+pub fn PathLabels::empty() -> Self
+
+pub(all) enum QAnswer {
+  Answer(Json)
+  NotEnoughInformation
+} derive(@debug.Debug)
+
+pub(all) struct RecordObj {
+  type_name : String
+  fields : Map[String, Item]
+}
+
+pub(all) enum Response {
+  ToolOk(ToolResult)
+  ToolError(String)
+  Quarantined(QAnswer)
+  Approval(Bool)
+} derive(@debug.Debug)
+
+pub(all) struct Session {
+  globals : Map[String, Item]
+  plan_types : Map[String, TypeSpec]
+  events : Array[Event]
+  output : Array[(String, @label.Label)]
+  mut next_id : Int
+  mut steps : Int
+  mut calls : Int
+}
+pub fn Session::get(Self, String) -> Item?
+pub fn Session::new() -> Self
+pub fn Session::printed(Self) -> String
+pub fn Session::tool_calls(Self) -> Array[Event]
+
+pub(all) struct ToolResult {
+  value : Json
+  readers : @label.Readers
+  paths : PathLabels
+} derive(@debug.Debug)
+pub fn ToolResult::plain(Json, readers? : @label.Readers) -> Self
+
+pub(all) struct ToolSpec {
+  name : String
+  params : Array[Param]
+  returns : String
+  doc : String
+} derive(@debug.Debug)
+
+pub(all) enum Ty {
+  TAny
+  TNone
+  TBool
+  TInt
+  TFloat
+  TStr
+  TList(Ty)
+  TDict
+  TRecord(String)
+  TOptional(Ty)
+} derive(Eq, @debug.Debug)
+pub fn Ty::parse(StringView) -> Self raise TypeSyntaxError
+pub fn Ty::render(Self) -> String
+pub fn Ty::to_json_schema(Self, Map[String, TypeSpec]) -> Json
+
+pub(all) struct TypeSpec {
+  name : String
+  fields : Array[FieldSpec]
+  doc : String
+} derive(@debug.Debug)
+
+pub(all) enum Value {
+  VNone
+  VBool(Bool)
+  VInt(Int64)
+  VFloat(Double)
+  VStr(String)
+  VList(ListObj)
+  VTuple(Array[Item])
+  VDict(DictObj)
+  VRecord(RecordObj)
+  VFunc(Func)
+  VClass(ClassRef)
+}
+pub fn Value::repr(Self) -> String
+pub fn Value::to_json(Self) -> Json
+pub fn Value::to_str(Self) -> String
+pub fn Value::truthy(Self) -> Bool
+pub fn Value::type_name(Self) -> String
+
+pub(all) struct World {
+  tools : Map[String, ToolSpec]
+  types : Map[String, TypeSpec]
+  policy : @policy.Policy
+  limits : Limits
+}
+pub fn World::new(Array[ToolSpec], Array[TypeSpec], @policy.Policy, limits? : Limits) -> Self
+pub fn World::signatures(Self) -> Map[String, Array[String]]
+
+// Type aliases
+
+// Traits
+pub(open) trait Host {
+  fn perform(Self, Effect) -> Response
+}

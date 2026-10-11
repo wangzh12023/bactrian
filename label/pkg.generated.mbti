@@ -1,0 +1,59 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wangzh12023/bactrian/label"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/immut/sorted_set",
+}
+
+// Values
+pub fn default_trusted(Source) -> Bool
+
+// Errors
+
+// Types and methods
+pub(all) struct Label {
+  sources : @sorted_set.SortedSet[Source]
+  readers : Readers
+  origins : @sorted_set.SortedSet[Int]
+} derive(Eq, @debug.Debug)
+pub fn Label::bottom() -> Self
+pub fn Label::flows_to(Self, Self) -> Bool
+pub fn Label::is_trusted(Self, (Source) -> Bool) -> Bool
+pub fn Label::join(Self, Self) -> Self
+pub fn Label::join_all(ArrayView[Self]) -> Self
+pub fn Label::plan() -> Self
+pub fn Label::render(Self) -> String
+pub fn Label::to_json(Self) -> Json
+pub fn Label::tool(String, readers? : Readers, origin? : Int) -> Self
+pub fn Label::untrusted_sources(Self, (Source) -> Bool) -> Array[Source]
+pub fn Label::user() -> Self
+pub fn Label::with_origin(Self, Int) -> Self
+pub fn Label::with_readers(Self, Readers) -> Self
+pub impl ToJson for Label
+
+pub(all) enum Readers {
+  Public
+  Only(@sorted_set.SortedSet[String])
+} derive(Eq, @debug.Debug)
+pub fn Readers::allows(Self, ArrayView[String]) -> Bool
+pub fn Readers::meet(Self, Self) -> Self
+pub fn Readers::only(ArrayView[String]) -> Self
+pub fn Readers::principals(Self) -> Array[String]
+pub fn Readers::render(Self) -> String
+pub fn Readers::to_json(Self) -> Json
+pub fn Readers::within(Self, Self) -> Bool
+pub impl ToJson for Readers
+
+pub(all) enum Source {
+  User
+  Plan
+  Tool(String)
+  Party(String)
+} derive(Compare, Eq, Hash, ToJson, @debug.Debug)
+pub fn Source::render(Self) -> String
+pub fn Source::to_json(Self) -> Json
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "wangzh12023/bactrian/bench"
+
+import {
+  "moonbitlang/core/debug",
+  "wangzh12023/bactrian/llm",
+  "wangzh12023/bactrian/runtime",
+  "wangzh12023/bactrian/suites/banking",
+}
+
+// Values
+pub fn openai_tools(@runtime.World) -> Json
+
+pub async fn run_baseline_cell(@llm.Endpoint, @banking.UserTask, @banking.InjectionTask?, max_steps? : Int, log? : (String) -> Unit) -> CellResult
+
+pub async fn run_cell(@llm.Endpoint, @llm.Endpoint, @banking.UserTask, @banking.InjectionTask?, qmode? : QMode, approve_untrusted? : Bool, log? : (String) -> Unit) -> CellResult
+
+// Errors
+
+// Types and methods
+pub(all) struct CellResult {
+  task : String
+  injection : String?
+  utility : Bool
+  attacked : Bool
+  ending : String
+  planner_calls : Int
+  confirmations : Int
+  stopped_at : Array[String]
+  attempts : Array[String]
+} derive(ToJson, @debug.Debug)
+
+pub(all) enum QMode {
+  Model
+  Hijacked
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
