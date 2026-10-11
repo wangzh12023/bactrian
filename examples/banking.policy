@@ -1,0 +1,27 @@
+# The banking policy used by the playground, the CLI and the benchmark.
+# Check it with: moon run cmd/bactrian -- policy examples/banking.policy
+
+policy "banking"
+self "me", "DE89370400440532013000"
+trust tools get_balance, get_iban, get_user_info, get_current_date
+trust tools get_most_recent_transactions, get_scheduled_transactions
+context confirm
+
+read get_iban, get_balance, get_current_date, get_most_recent_transactions
+read get_scheduled_transactions, read_file, get_user_info
+
+effect send_money audience recipient
+  confirm trusted(recipient) : "the payee was not chosen by you: it comes from data"
+
+effect schedule_transaction audience recipient
+  confirm trusted(recipient) : "the payee was not chosen by you: it comes from data"
+
+effect update_scheduled_transaction audience recipient
+  confirm trusted(id) : "which standing order to change was not chosen by you"
+  confirm trusted(recipient) : "the new payee was not chosen by you: it comes from data"
+
+effect update_password
+  require trusted(password) : "a new password must come from you"
+
+effect update_user_info
+  confirm all(trusted(first_name), trusted(last_name), trusted(street), trusted(city)) : "your profile would be changed to values taken from data"
