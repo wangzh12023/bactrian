@@ -80,6 +80,14 @@ fn live_view(m : Model, emit : @rabbita.Emit[Msg]) -> @html.Html {
         ),
       ]),
       div(class="controls", [
+        label(class="toggle", [
+          input(
+            input_type=Checkbox,
+            checked=l.approve,
+            on_change=emit.map(_ => LiveEdit(l => { ..l, approve: !l.approve, })),
+          ),
+          span(" I approve everything that asks for confirmation"),
+        ]),
         button(
           class="run",
           disabled=busy || l.api_key == "",
