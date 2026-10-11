@@ -28,11 +28,12 @@ pub const CONTEXT : String = "<context>"
 /// is denied.
 ///
 /// For a side-effecting tool the engine first enforces confidentiality
-/// against the tool's audience: unless the audience itself was chosen by the
-/// user or the plan, every other argument — and the control context — must be
-/// readable by everyone in the audience. Then the optional context-integrity
-/// check runs, then the tool's own rules. Any `Block` concern denies the call;
-/// otherwise any `Confirm` concern asks the user; otherwise it is allowed.
+/// against the tool's audience: when data (not the user) chose the audience,
+/// every other argument — and the control context — must be readable by
+/// everyone in it, otherwise the call is blocked as an exfiltration. Then the
+/// optional context-integrity check runs, then the tool's own rules. Any
+/// `Block` concern denies the call; otherwise any `Confirm` concern asks the
+/// user; otherwise it is allowed.
 pub fn Policy::check(self : Policy, call : CallView) -> Verdict {
   let tp = match self.tools.get(call.tool) {
     Some(tp) => tp
@@ -52,6 +53,11 @@ pub fn Policy::check(self : Policy, call : CallView) -> Verdict {
           concerns: [],
         }
       Some((audience, audience_trusted)) =>
+        // Everyone in the audience observes the effect. When the user chose
+        // the audience, sharing with it is the user's decision. When data
+        // chose it, everything in the effect must be readable by all of the
+        // audience; anything else is an exfiltration and is blocked, even if
+        // the user would approve the call.
         if !audience_trusted && !audience.is_empty() {
           let who = audience.join(", ")
           for name, arg in call.args {
@@ -61,7 +67,7 @@ pub fn Policy::check(self : Policy, call : CallView) -> Verdict {
             if !arg.label.readers.allows(audience) {
               concerns.push({
                 severity: Block,
-                reason: "`\{name}` contains data that \{who} is not allowed to read, and \{who} was not chosen by you",
+                reason: "`\{name}` would reveal data to \{who}, who may not read it and was not chosen by you",
                 culprit: name,
                 label: arg.label,
               })
@@ -70,7 +76,7 @@ pub fn Policy::check(self : Policy, call : CallView) -> Verdict {
           if !call.context.readers.allows(audience) {
             concerns.push({
               severity: Block,
-              reason: "whether this happens depends on data that \{who} is not allowed to read",
+              reason: "whether this happens depends on data that \{who} may not read, and \{who} was not chosen by you",
               culprit: CONTEXT,
               label: call.context,
             })

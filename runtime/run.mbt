@@ -20,7 +20,7 @@ pub(all) enum Outcome {
   Suspended(key~ : String, effect~ : Effect)
   /// The plan failed.
   Failed(PlanError)
-}
+} derive(Debug)
 
 ///|
 /// Parses a plan without running it. Syntax errors are reported with the

@@ -1,0 +1,15 @@
+import {
+  "wangzh12023/bactrian/label",
+  "wangzh12023/bactrian/policy",
+  "wangzh12023/bactrian/runtime",
+  "moonbitlang/core/string",
+}
+
+import {
+  "wangzh12023/bactrian/label",
+  "wangzh12023/bactrian/policy",
+  "wangzh12023/bactrian/runtime",
+  "wangzh12023/bactrian/suites/banking",
+} for "test"
+
+warnings = "-implicit_impl_as_method"
