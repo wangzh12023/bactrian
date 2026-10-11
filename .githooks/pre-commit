@@ -1,3 +1,3 @@
 #!/bin/sh
-
-moon check
+# Keep the tree warning-free on both backends before every commit.
+moon check --deny-warn && moon check --target js --deny-warn
