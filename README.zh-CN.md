@@ -1,6 +1,6 @@
 # Bactrian 🐫🐫 双峰驼
 
-**让 AI 智能体从设计上免疫提示注入——不是识��攻击，而是让攻击无效。**
+**让 AI 智能体从设计上免疫提示注入——不是识别攻击，而是让攻击无效。**
 
 [![CI](https://github.com/wangzh12023/bactrian/actions/workflows/ci.yml/badge.svg)](https://github.com/wangzh12023/bactrian/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
@@ -78,7 +78,7 @@ effect update_password
 | **非干扰性（non-interference）**：随机改写所有不可信数据——文件内容、交易备注、**隔离模型的每一个回答**——策略在不询问用户的情况下放行的副作用序列**永远不变**（攻击者最多只能让程序提前停止） | 15 个计划 × 每个 300 个对抗世界，覆盖分支、`break`、推导式、带 lambda 的排序、字典写入、隐式信息流 |
 | AgentDojo 银行套件 144 个攻击场景，在隔离模型**被完全劫持**的情况下：**0 / 144 成功** | 确定性测试 |
 | 是策略、而不是运气挡住了攻击：换成"全部放行"的策略，同一运行时就会被攻破 | 同上 |
-| 16 个正常任务全部能被���确的计划完成；其中 2 个需要用户在看到来源后确认 | 同上 |
+| 16 个正常任务全部能被正确的计划完成；其中 2 个需要用户在看到来源后确认 | 同上 |
 | 来自不可信数据的报错信息永远不会回灌给规划模型 | agent 测试 |
 | 规划模型重试时，已经执行过的副作用不会重复执行 | agent 测试 |
 
