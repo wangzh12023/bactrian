@@ -61,6 +61,10 @@ deterministically.
   carry the emptiness of `xs`. Both fixed; the plans that exposed them were
   added to the non-interference property, which fails without the fixes.
 - Second suite: e-mail tasks and injections from AgentDojo's workspace suite.
+- A second adversarial review round **found three more holes**: tool calls
+  inside comprehensions escaped the comprehension's control context;
+  `enumerate` ignored `start`'s label; `sorted` ignored `reverse`'s label.
+  Fixed; exploits added to the property (22 plans).
 
 ## Design decisions worth explaining
 

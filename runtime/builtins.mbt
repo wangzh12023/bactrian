@@ -201,7 +201,8 @@ fn Ctx::call_builtin(
         Some({ value: VInt(s), .. }) => s
         _ => 0L
       }
-      let shape = x.top()
+      // The counters depend on how many elements there are and on `start`.
+      let shape = a.pos.fold(init=x.top(), (acc, y) => acc.join(y.label))
       let items = self
         .iterate(x, span)
         .mapi((i, el) => {
@@ -235,9 +236,9 @@ fn Ctx::call_builtin(
       let x = a.pos[0]
       let items = self.iterate(x, span)
       let key_fn = a.kwarg("key")
-      let rev = match a.kwarg("reverse") {
-        Some(r) => r.value.truthy()
-        None => false
+      let (rev, rev_label) = match a.kwarg("reverse") {
+        Some(r) => (r.value.truthy(), r.top())
+        None => (false, Label::bottom())
       }
       let keyed = items.map(el => {
         let k = match key_fn {
@@ -246,7 +247,8 @@ fn Ctx::call_builtin(
         }
         (k, el)
       })
-      let mut order_label = x.top()
+      // The order of the result depends on every key and on `reverse`.
+      let mut order_label = x.top().join(rev_label)
       for p in keyed {
         order_label = order_label.join(p.0.deep())
       }
@@ -406,7 +408,7 @@ fn Ctx::call_builtin(
           })
         _ => raise type_error("isinstance() arg 2 must be a type", span)
       }
-      { value: VBool(ok), label: x.label, }
+      { value: VBool(ok), label: x.label.join(a.pos[1].label), }
     }
     "type" => {
       arity(1)

@@ -259,6 +259,24 @@ let plans : Array[String] = [
     #|picks = [t.amount for t in txs if t.subject == "rent"]
     #|send_money(recipient="CH9300762011623852957", amount=min(picks, default=0.0), subject="min default", date="2024-01-01")
   ),
+  // Found by a second adversarial review: a tool call inside a comprehension
+  // must run under the comprehension's control context, `enumerate`'s
+  // counters depend on `start`, and the order of `sorted` on `reverse`.
+  (
+    #|txs = get_most_recent_transactions(10)
+    #|done = [send_money(recipient="CH9300762011623852957", amount=1.0, subject="in comprehension", date="2024-01-01") for t in txs if "rent" in t.subject]
+  ),
+  (
+    #|txs = get_most_recent_transactions(10)
+    #|start = int(txs[0].amount) if txs else 0
+    #|pairs = enumerate(["x"], start)
+    #|send_money(recipient="CH9300762011623852957", amount=float(pairs[0][0]), subject="enumerate", date="2024-01-01")
+  ),
+  (
+    #|flag = "rent" in read_file("bill.txt")
+    #|ordered = sorted(["CH9300762011623852957", "US133000000121212121212"], reverse=flag)
+    #|send_money(recipient=ordered[0], amount=1.0, subject="sorted reverse", date="2024-01-01")
+  ),
 ]
 
 ///|
@@ -338,7 +356,7 @@ test "the reference world exercises real side effects" {
   debug_inspect(
     shown,
     content=(
-      #|[0, 1, 0, 1, 2, 1, 1, 1, 0, 1, 0, 0, 3, 1, 1, 0, 1, 0, 1]
+      #|[0, 1, 0, 1, 2, 1, 1, 1, 0, 1, 0, 0, 3, 1, 1, 0, 1, 0, 1, 0, 1, 0]
     ),
   )
   inspect(

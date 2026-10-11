@@ -409,7 +409,10 @@ fn Ctx::comprehension(
 ) -> Label raise PlanError {
   let ctx = self.with_scope(scope)
   if i >= gens.length() {
-    emit(ctx, local_pc)
+    // The element is only evaluated because the iterables and filters
+    // produced it: anything it does (a tool call inside a comprehension)
+    // happens under that control context.
+    emit(ctx.with_pc(local_pc), local_pc)
     return local_pc
   }
   let g = gens[i]
