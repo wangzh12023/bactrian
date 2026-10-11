@@ -147,6 +147,7 @@ Security claims about agents are cheap; Bactrian's are tested.
 | Labels form a lattice (join is associative, commutative, idempotent; `bottom` is its identity; joining never makes data more trusted or more readable) | QuickCheck properties, [`label/label_test.mbt`](label/label_test.mbt) |
 | **Non-interference**: changing untrusted data — file contents, transaction subjects, *every answer of the quarantined model* — never changes the side effects the policy lets through without asking, except by stopping the program | QuickCheck over 15 plans × 300 adversarial worlds, including branches, `break`, comprehensions, sorting with lambdas, dict writes and implicit flows, [`runtime/noninterference_test.mbt`](runtime/noninterference_test.mbt) |
 | No AgentDojo banking attack succeeds even when the quarantined model is fully hijacked: **0 / 144** | [`suites/banking/banking_test.mbt`](suites/banking/banking_test.mbt) |
+| The same holds for e-mail: AgentDojo's workspace e-mail injections (exfiltrate the 2FA code, delete mail…) × 5 plans, hijacked quarantined model: **0 / 100** | [`suites/mail/mail_test.mbt`](suites/mail/mail_test.mbt) |
 | The policy, not luck, stops them: with an allow-all policy the same runtime is exploited | same file |
 | All 16 benign tasks are solved by correct plans; 2 need the user's informed approval | same file |
 | Error messages derived from untrusted data never reach the planner | [`agent/agent_test.mbt`](agent/agent_test.mbt) |
@@ -200,6 +201,7 @@ runtime/        the labelled interpreter (parsing via marianoguerra/pure-py),
 agent/          planner prompt, code extraction, retry loop with redacted feedback
 llm/            OpenAI-compatible client and quarantined-LLM adapter
 suites/banking/ AgentDojo's banking suite: tools, data, tasks, injections, policy
+suites/mail/    e-mail tasks and injections from AgentDojo's workspace suite
 bench/          benchmark harness and an undefended tool-calling baseline
 cmd/bactrian/   command-line interface
 web/            the playground (rabbita, compiled to JavaScript)
