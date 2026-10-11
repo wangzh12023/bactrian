@@ -8,7 +8,7 @@ guarantees, a deterministic attack matrix, and runs with real models.
 | Test | What it shows |
 |---|---|
 | `label/label_test.mbt` | `join` is commutative, associative, idempotent; `bottom` is its identity; `flows_to` is the lattice order; joining never makes data more trusted or more readable (QuickCheck) |
-| `runtime/noninterference_test.mbt` | **Progress-insensitive non-interference** of the trusted projection of performed side effects, for 15 plans × 300 adversarial worlds each (random file contents, random transactions, and a quarantined model answering whatever the attacker wants). The plans exercise branches, loops with `break`, comprehensions with filters, `sorted` with a lambda key, ternaries, short-circuit operators, dictionary writes, list indexing by untrusted data, and implicit flows. A companion test checks the property is not vacuous (the reference world performs real effects). |
+| `runtime/noninterference_test.mbt` | **Progress-insensitive non-interference** of the trusted projection of performed side effects, for 19 plans × 300 adversarial worlds each (random file contents, random transactions, and a quarantined model answering whatever the attacker wants). The plans exercise branches, loops with `break`, comprehensions with filters, `sorted` with a lambda key, ternaries, short-circuit operators, dictionary writes, list indexing by untrusted data, and implicit flows. A companion test checks the property is not vacuous (the reference world performs real effects). |
 | `suites/banking/banking_test.mbt` | Reference plans solve all 16 benign tasks; **0 / 144** attacks succeed with a *hijacked* quarantined model and a user who refuses untrusted confirmations; with an allow-all policy the same runtime is exploited; the quarantined model's answer stays untrusted even about trusted data; denials explain the provenance |
 | `agent/agent_test.mbt` | Error messages caused by untrusted data are redacted from planner feedback; a corrected plan never repeats a side effect; a denial ends the task |
 | `policy/policy_test.mbt` | Decisions, exfiltration checks, fail-closed defaults, `parse ∘ render = id`, validation against tool signatures |
@@ -28,6 +28,15 @@ guarantees, a deterministic attack matrix, and runs with real models.
    therefore trusted. A model can answer anything regardless of its input, so
    its answers now always carry the untrusted source
    `tool:query_ai_assistant` (`runtime/call.mbt`), with a regression test.
+
+3. **Spread literals** and 4. **`min`/`max` defaults** (found by an
+   adversarial code review, then added to the non-interference property so
+   that it fails without the fix). `[*xs]`, `(*xs,)`, `{*xs}` and `f(*xs)` did
+   not record that their length depends on `xs`, so `len([*untrusted])` was
+   trusted and could index a list of plan literals to pick the payee; and
+   `max(xs, default=d)` returned `d` with its own label although *whether*
+   `xs` was empty depends on untrusted data. Fixed in `runtime/eval.mbt`,
+   `runtime/call.mbt` and `runtime/builtins.mbt`.
 
 ## 2. Real models on the AgentDojo banking suite
 

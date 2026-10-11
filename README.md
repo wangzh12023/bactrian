@@ -145,7 +145,7 @@ Security claims about agents are cheap; Bactrian's are tested.
 | Property | How it is checked |
 |---|---|
 | Labels form a lattice (join is associative, commutative, idempotent; `bottom` is its identity; joining never makes data more trusted or more readable) | QuickCheck properties, [`label/label_test.mbt`](label/label_test.mbt) |
-| **Non-interference**: changing untrusted data — file contents, transaction subjects, *every answer of the quarantined model* — never changes the side effects the policy lets through without asking, except by stopping the program | QuickCheck over 15 plans × 300 adversarial worlds, including branches, `break`, comprehensions, sorting with lambdas, dict writes and implicit flows, [`runtime/noninterference_test.mbt`](runtime/noninterference_test.mbt) |
+| **Non-interference**: changing untrusted data — file contents, transaction subjects, *every answer of the quarantined model* — never changes the side effects the policy lets through without asking, except by stopping the program | QuickCheck over 19 plans × 300 adversarial worlds, including branches, `break`, comprehensions, sorting with lambdas, dict writes and implicit flows, [`runtime/noninterference_test.mbt`](runtime/noninterference_test.mbt) |
 | No AgentDojo banking attack succeeds even when the quarantined model is fully hijacked: **0 / 144** | [`suites/banking/banking_test.mbt`](suites/banking/banking_test.mbt) |
 | The same holds for e-mail: AgentDojo's workspace e-mail injections (exfiltrate the 2FA code, delete mail…) × 5 plans, hijacked quarantined model: **0 / 100** | [`suites/mail/mail_test.mbt`](suites/mail/mail_test.mbt) |
 | The policy, not luck, stops them: with an allow-all policy the same runtime is exploited | same file |
@@ -153,11 +153,14 @@ Security claims about agents are cheap; Bactrian's are tested.
 | Error messages derived from untrusted data never reach the planner | [`agent/agent_test.mbt`](agent/agent_test.mbt) |
 | A corrected plan never repeats a side effect of a failed attempt | same file |
 
-The non-interference property found a real bug during development: writing
+Four real bugs were found this way and are now guarded by tests — one by the
+non-interference property, one by running real models against a hijacked
+quarantined model, and two by an adversarial code review whose exploits were
+then added to the property (see [docs/evaluation.md](docs/evaluation.md)). For
+example, the property found that writing
 `d[k] = v` to an existing key did not record `k`'s label in the dictionary, so
 an attacker-chosen key could silently decide what a *different* key read later.
-It is fixed and the property now guards it. Details in
-[docs/evaluation.md](docs/evaluation.md).
+It is fixed and the property now guards it.
 
 ## Results with real models
 

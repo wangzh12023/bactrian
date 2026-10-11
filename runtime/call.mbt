@@ -22,7 +22,10 @@ fn Ctx::eval_args(
   keywords : Array[@ast.Keyword],
   span : @basic.Span,
 ) -> Args raise PlanError {
-  let pos = self.eval_elements(args, span)
+  // `f(*xs)`: which argument lands in which position depends on the shape of
+  // `xs`, so every positional argument carries it.
+  let (raw, spread) = self.eval_elements(args, span)
+  let pos = raw.map(a => a.taint(spread))
   let kw = []
   for k in keywords {
     match k.arg {

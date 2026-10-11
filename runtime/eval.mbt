@@ -54,16 +54,16 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
       { value: VStr(sb.to_string()), label: l.join(Label::plan()), }
     }
     List(elts~, span~, ..) => {
-      let items = self.eval_elements(elts, span)
-      list_item(items, Label::plan())
+      let (items, spread) = self.eval_elements(elts, span)
+      list_item(items, Label::plan(), shape=Label::plan().join(spread))
     }
     Tuple(elts~, span~, ..) => {
-      let items = self.eval_elements(elts, span)
-      { value: VTuple(items), label: Label::plan(), }
+      let (items, spread) = self.eval_elements(elts, span)
+      { value: VTuple(items), label: Label::plan().join(spread), }
     }
     Set(elts~, span~) => {
-      let items = dedupe(self.eval_elements(elts, span))
-      list_item(items, Label::plan())
+      let (items, spread) = self.eval_elements(elts, span)
+      list_item(dedupe(items), Label::plan(), shape=Label::plan().join(spread))
     }
     Dict(keys~, values~, span~) => {
       let entries : Map[String, (Item, Item)] = Map([])
@@ -360,17 +360,22 @@ fn Ctx::load_name(
 }
 
 ///|
-/// Evaluates list/tuple/set elements, expanding `*xs`.
+/// Evaluates list/tuple/set elements, expanding `*xs`. Returns the elements
+/// and the join of the shapes of every spread iterable: how many elements a
+/// `*xs` contributes, and in which order, depends on `xs`, so the length and
+/// order of the result do too.
 fn Ctx::eval_elements(
   self : Ctx,
   elts : Array[@ast.Expr],
   span : @basic.Span,
-) -> Array[Item] raise PlanError {
+) -> (Array[Item], Label) raise PlanError {
   let out = []
+  let mut spread = Label::bottom()
   for e in elts {
     match e {
       Starred(value~, ..) => {
         let v = self.eval(value)
+        spread = spread.join(v.top())
         for x in self.iterate(v, span) {
           out.push(x.taint(v.top()))
         }
@@ -385,7 +390,7 @@ fn Ctx::eval_elements(
       )
     }
   }
-  out
+  (out, spread)
 }
 
 ///|

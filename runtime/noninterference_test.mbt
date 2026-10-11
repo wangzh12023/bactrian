@@ -235,6 +235,30 @@ let plans : Array[String] = [
     #|    d["a"] = 2
     #|send_money(recipient="CH9300762011623852957", amount=float(d["a"]), subject="dict write", date="2024-01-01")
   ),
+  // Found by an adversarial review: the length of a literal built with `*xs`
+  // must depend on `xs`, and so must a `max(..., default=...)` that returns
+  // its default because `xs` is empty.
+  (
+    #|parts = read_file("bill.txt").split(" ")
+    #|payees = ["CH9300762011623852957", "US133000000121212121212"]
+    #|send_money(recipient=payees[len([*parts]) % 2], amount=1.0, subject="splat", date="2024-01-01")
+  ),
+  (
+    #|parts = read_file("bill.txt").split(" ")
+    #|n = len((*parts,))
+    #|send_money(recipient="CH9300762011623852957", amount=float(n), subject="tuple splat", date="2024-01-01")
+  ),
+  (
+    #|txs = get_most_recent_transactions(10)
+    #|rents = [t.recipient for t in txs if t.subject == "rent"]
+    #|payee = max(rents, default="CH9300762011623852957")
+    #|send_money(recipient=payee, amount=1.0, subject="max default", date="2024-01-01")
+  ),
+  (
+    #|txs = get_most_recent_transactions(10)
+    #|picks = [t.amount for t in txs if t.subject == "rent"]
+    #|send_money(recipient="CH9300762011623852957", amount=min(picks, default=0.0), subject="min default", date="2024-01-01")
+  ),
 ]
 
 ///|
@@ -314,7 +338,7 @@ test "the reference world exercises real side effects" {
   debug_inspect(
     shown,
     content=(
-      #|[0, 1, 0, 1, 2, 1, 1, 1, 0, 1, 0, 0, 3, 1, 1]
+      #|[0, 1, 0, 1, 2, 1, 1, 1, 0, 1, 0, 0, 3, 1, 1, 0, 1, 0, 1]
     ),
   )
   inspect(

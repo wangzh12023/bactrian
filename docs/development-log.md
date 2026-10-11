@@ -55,6 +55,12 @@ deterministically.
   data, the answer inherited only its prompt's label and was trusted.
   Fixed: the assistant's answers always carry an untrusted source.
 - CI (Linux and Windows; wasm and JS), GitHub Pages deployment, docs.
+- An independent adversarial review of the interpreter (an AI agent tasked
+  with breaking non-interference) **found two holes**: spread literals
+  (`[*xs]`) did not carry the shape of `xs`, and `max(xs, default=d)` did not
+  carry the emptiness of `xs`. Both fixed; the plans that exposed them were
+  added to the non-interference property, which fails without the fixes.
+- Second suite: e-mail tasks and injections from AgentDojo's workspace suite.
 
 ## Design decisions worth explaining
 

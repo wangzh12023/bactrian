@@ -288,18 +288,25 @@ fn Ctx::call_builtin(
       acc.taint(x.top())
     }
     "min" | "max" => {
+      // Whether the sequence is empty is part of its shape: when the default
+      // is returned, that choice was made by the shape.
+      let emptiness = match a.pos {
+        [x] => x.top()
+        _ => Label::bottom()
+      }
       let candidates = match a.pos {
         [x] => self.iterate(x, span).map(el => el.taint(x.top()))
         xs => xs
       }
       if candidates.is_empty() {
         match a.kwarg("default") {
-          Some(d) => return d
+          Some(d) => return d.taint(emptiness)
           None =>
             raise err(
               Runtime("ValueError"),
               "\{name}() arg is an empty sequence",
               span,
+              label=emptiness,
             )
         }
       }
