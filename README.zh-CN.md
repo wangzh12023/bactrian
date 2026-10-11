@@ -28,6 +28,8 @@ Bactrian（双峰驼）是一个用 **MoonBit** 实现的智能体运行时，�
 
 ## 三分钟上手
 
+[![Playground：同一段计划，有/无 Bactrian 的对比](docs/img/playground-3.png)](https://wangzh12023.github.io/bactrian/)
+
 **浏览器**：<https://wangzh12023.github.io/bactrian/>。解释器、策略引擎和模拟银行全部在页面里运行（MoonBit 编译为 JavaScript）。你可以修改规划程序、攻击者文本、被劫持的隔离模型的回答、甚至策略本身，并排对比"有/没有 Bactrian"。
 
 **终端离线演示**（不需要 API Key）：

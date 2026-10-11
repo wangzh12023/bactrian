@@ -93,11 +93,11 @@ button.ghost { background: transparent; border: 1px solid var(--line); color: va
 .badge.ask { background: var(--warn-bg); color: var(--warn); }
 .badge.q { background: var(--code-bg); color: var(--muted); border: 1px solid var(--line); }
 .args { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
-.arg { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; gap: 8px; font: 12px var(--mono); align-items: baseline; }
+.arg { display: grid; grid-template-columns: 74px minmax(90px, 1fr) minmax(0, max-content); gap: 8px; font: 12px var(--mono); align-items: baseline; }
 .arg.culprit { background: var(--bad-bg); border-radius: 4px; }
 .k { color: var(--muted); }
 .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lbl { font-size: 11px; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+.lbl { font-size: 11px; border-radius: 4px; padding: 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; min-width: 0; }
 .lbl.trusted { color: var(--good); border: 1px solid var(--good); }
 .lbl.untrusted { color: var(--bad); border: 1px solid var(--bad); }
 .concern { margin-top: 6px; font-size: 13px; }

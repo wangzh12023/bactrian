@@ -214,7 +214,8 @@ fn event_view(e : @runtime.Event, session : @runtime.Session) -> @html.Html {
                   span(class="v", short(kv.1.stringify(), 60)),
                   span(
                     class=if trusted { "lbl trusted" } else { "lbl untrusted" },
-                    lbl.render(),
+                    title=lbl.render(),
+                    compact_label(lbl, trusted),
                   ),
                 ],
               )
@@ -252,7 +253,11 @@ fn event_view(e : @runtime.Event, session : @runtime.Session) -> @html.Html {
                 70,
               ),
             ),
-            span(class="lbl untrusted", prompt_label.render()),
+            span(
+              class="lbl untrusted",
+              title=prompt_label.render(),
+              compact_label(prompt_label, false),
+            ),
           ]),
         ]),
       ])
@@ -276,5 +281,31 @@ fn validation(pol : @policy.Policy) -> @html.Html {
     p(class="ok", "✓ The policy is consistent with the bank's tools.")
   } else {
     div(class="warn", problems.map(pr => div("⚠ " + pr)))
+  }
+}
+
+///|
+/// A short tag for a label: whether it is trusted, which untrusted tools it
+/// came from, and whether it is private. The full label is in the tooltip.
+fn compact_label(l : @label.Label, trusted : Bool) -> String {
+  let from = l.sources
+    .to_array()
+    .filter_map(s => {
+      match s {
+        Tool(t) if !trusted => Some(t)
+        Party(p) => Some("by " + short(p, 10))
+        _ => None
+      }
+    })
+  let who = match l.readers {
+    Public => ""
+    Only(_) => " · private"
+  }
+  if trusted {
+    "trusted" + who
+  } else {
+    "untrusted ← " +
+    from.join(", ").replace(old="query_ai_assistant", new="assistant") +
+    who
   }
 }

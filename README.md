@@ -52,6 +52,8 @@ flowchart LR
 
 ## Try it
 
+[![The playground: the same plan without and with Bactrian](docs/img/playground-3.png)](https://wangzh12023.github.io/bactrian/)
+
 **In the browser** — <https://wangzh12023.github.io/bactrian/>. The
 interpreter, policy engine and a simulated bank run entirely in the page
 (MoonBit compiled to JavaScript). Edit the plan, the attacker's text, what the
