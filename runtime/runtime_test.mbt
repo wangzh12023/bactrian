@@ -226,7 +226,9 @@ test "a payee extracted from an injected bill is blocked even if the quarantined
   }
   inspect(
     arg_labels["recipient"].render(),
-    content="plan+tool:read_file|public",
+    content=(
+      #|plan+tool:read_file+tool:query_ai_assistant|public
+    ),
   )
   inspect(verdict.concerns[0].culprit, content="recipient")
 }

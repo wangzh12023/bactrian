@@ -366,8 +366,13 @@ fn Ctx::query_quarantined(
       )
   }
   // The answer may depend on anything in the prompt, and on the control
-  // context in which it was asked.
-  let base = prompt_label.with_origin(id)
+  // context in which it was asked. It is also never more trusted than the
+  // model itself: even from a prompt built only of trusted data, a model can
+  // answer anything (it may be compromised, or simply wrong), so its output
+  // always carries the untrusted source `query_ai_assistant`.
+  let base = prompt_label
+    .join(Label::tool("query_ai_assistant"))
+    .with_origin(id)
   match answer {
     NotEnoughInformation => {
       self.session.events.push(
@@ -421,10 +426,18 @@ fn Ctx::query_quarantined(
 /// and who may read it.
 pub fn explain_label(l : Label, session : Session) -> String {
   let parts = []
+  let quarantined = l.sources.contains(Tool("query_ai_assistant")) ||
+    l.origins
+    .to_array()
+    .any(id => {
+      session.events.iter().any(e => e is Quarantined(id=i, ..) && i == id)
+    })
   for s in l.sources {
     match s {
       User => parts.push("you")
       Plan => ()
+      // Shown once, below.
+      Tool("query_ai_assistant") => ()
       Tool(name) => {
         let calls = l.origins
           .to_array()
@@ -446,11 +459,7 @@ pub fn explain_label(l : Label, session : Session) -> String {
       Party(who) => parts.push("content written by \{who}")
     }
   }
-  if l.origins
-    .to_array()
-    .any(id => {
-      session.events.iter().any(e => e is Quarantined(id=i, ..) && i == id)
-    }) {
+  if quarantined {
     parts.push("an answer of the quarantined assistant")
   }
   let from = if parts.is_empty() { "your request" } else { parts.join(", ") }
