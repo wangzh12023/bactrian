@@ -171,10 +171,10 @@ agent using the same model:
 | Model | Agent | Utility, no attack | Utility under attack | Attack success rate |
 |---|---|---|---|---|
 | GPT-4o-mini | tool-calling agent, no defence | 62% | 53% | **26% (38/144)** |
-| GPT-4o-mini | Bactrian | 44% | 38% | **1/144¹** |
+| GPT-4o-mini | Bactrian | 44% | 40% | **1/144¹** |
 | GPT-4o-mini | Bactrian, quarantined LLM *hijacked by the attacker* | 38% | 40% | **1/144¹** |
 | DeepSeek | tool-calling agent, no defence | 69% | 69% | 0% |
-| DeepSeek | Bactrian, quarantined LLM *hijacked* | 44% | 43% | **0%** |
+| DeepSeek | Bactrian, quarantined LLM *hijacked* | 38% | 38% | **0%** |
 
 ¹ A false positive of the benchmark: the task itself asks to pay rent to the
 account the injection names. Security is bought with utility — mostly actions

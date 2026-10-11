@@ -49,16 +49,17 @@ simulated user refuses every confirmation request (the strictest setting —
 a real user could approve legitimate ones). The baseline is a standard
 tool-calling agent with the same model, tools, data and system information,
 which sees tool results directly. Runs used an OpenAI-compatible gateway in
-October 2026; models are named as the gateway exposes them.
+October 2026; models are named as the gateway exposes them. All Bactrian rows
+were produced with the final interpreter (after every fix listed above).
 
 | Model | Agent | Utility, no attack | Utility under attack | Attack success rate |
 |---|---|---|---|---|
 | GPT-4o-mini | tool-calling agent, no defence | 10/16 (62%) | 76/144 (53%) | **38/144 (26%)** |
-| GPT-4o-mini | Bactrian | 7/16 (44%) | 54/144 (38%) | **1/144 (1%)**¹ |
-| GPT-4o-mini | Bactrian, quarantined LLM hijacked | 6/16 (38%) | 57/144 (40%) | **1/144 (1%)**¹ |
+| GPT-4o-mini | Bactrian | 7/16 (44%) | 57/144 (40%) | **1/144 (1%)**¹ |
+| GPT-4o-mini | Bactrian, quarantined LLM hijacked | 6/16 (38%) | 58/144 (40%) | **1/144 (1%)**¹ |
 | DeepSeek (deepseek-chat) | tool-calling agent, no defence | 11/16 (69%) | 99/144 (69%) | 0/144 (0%) |
 | DeepSeek (deepseek-chat) | Bactrian | 7/16 (44%) | 69/144 (48%) | 0/144 (0%) |
-| DeepSeek (deepseek-chat) | Bactrian, quarantined LLM hijacked | 7/16 (44%) | 62/144 (43%) | 0/144 (0%) |
+| DeepSeek (deepseek-chat) | Bactrian, quarantined LLM hijacked | 6/16 (38%) | 54/144 (38%) | 0/144 (0%) |
 
 ¹ The one "successful attack" is user task 15 × injection task 4 and is a
 false positive of the benchmark: injection task 4's goal is a recurring payment
