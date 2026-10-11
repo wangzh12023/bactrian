@@ -1,3 +1,4 @@
 #!/bin/sh
 # Keep the tree warning-free on both backends before every commit.
+PATH="$HOME/.moon/bin:$PATH"
 moon check --deny-warn && moon check --target js --deny-warn

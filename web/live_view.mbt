@@ -25,12 +25,27 @@ fn live_view(m : Model, emit : @rabbita.Emit[Msg]) -> @html.Html {
         "Live: a real model plans in your browser. It only ever sees your request; the documents of the simulated bank carry the attack you choose. Requests go straight from this page to the endpoint you configure (it must allow browser requests, e.g. Baidu Qianfan v2, DeepSeek or any OpenAI-compatible gateway).",
       ),
       panel("Model (OpenAI-compatible)", [
+        div(
+          class="presets",
+          [
+            span(class="hint", "Presets: "),
+            ..presets.map(pr => {
+              button(
+                class="ghost small",
+                on_click=emit(
+                  LiveEdit(l => { ..l, base_url: pr.1, model: pr.2, }),
+                ),
+                pr.0,
+              )
+            }),
+          ],
+        ),
         field("Base URL", l.base_url, Text, (l, v) => { ..l, base_url: v, }),
         field("API key", l.api_key, Password, (l, v) => { ..l, api_key: v, }),
         field("Model", l.model, Text, (l, v) => { ..l, model: v, }),
         p(
           class="hint",
-          "e.g. https://qianfan.baidubce.com/v2 with ernie-5.0, or https://api.deepseek.com with deepseek-chat. The key is kept in this browser only.",
+          "The key is kept in this browser only and sent only to the endpoint above.",
         ),
       ]),
       panel("Your request", [
@@ -151,3 +166,14 @@ fn live_result_view(r : LiveResult, l : Live) -> @html.Html {
     ending,
   ])
 }
+
+///|
+/// One-click endpoint presets: (label, base URL, model).
+let presets : Array[(String, String, String)] = [
+  ("Baidu Qianfan · ERNIE", "https://qianfan.baidubce.com/v2", "ernie-5.0"),
+  ("DeepSeek", "https://api.deepseek.com", "deepseek-chat"),
+  (
+    "Qwen (DashScope)", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus",
+  ),
+  ("OpenAI", "https://api.openai.com/v1", "gpt-4o-mini"),
+]
