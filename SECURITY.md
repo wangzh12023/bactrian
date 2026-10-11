@@ -35,4 +35,4 @@ The fastest way to demonstrate a hole is a test in
 
 Every confirmed hole gets a fix, a regression test, and an entry in
 [docs/evaluation.md](docs/evaluation.md) under "Bugs these tests found". The
-four found so far are listed there.
+bugs found so far are listed there.

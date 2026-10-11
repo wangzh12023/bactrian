@@ -14,8 +14,8 @@ of the system under test.
 |---|---|---|
 | Market and literature research (CaMeL, FIDES, AgentDojo, MoonBit ecosystem, past winners) | Searching, reading and summarising repositories, papers and registries | Claims were checked against the sources (reports in the project's research notes); the decision record lists what was verified first-hand |
 | Design (lattice, label rules, sans-IO effects, policy language) | Proposing and discussing designs | Every rule is covered by a test; the non-interference property is the arbiter |
-| Code | Writing MoonBit code with the compiler as the first reviewer (`moon check`), then tests | 38 test blocks incl. QuickCheck properties; CI on Linux and Windows, wasm and JS |
-| Debugging | Interpreting failing property tests and benchmark runs | Two real security bugs were found this way (see below) |
+| Code | Writing MoonBit code with the compiler as the first reviewer (`moon check`), then tests | 43 test blocks incl. QuickCheck properties; CI on Linux and Windows, wasm and JS |
+| Debugging and review | Interpreting failing property tests and benchmark runs; independent adversarial review agents tasked with breaking non-interference | Seven real security bugs were found this way (see the timeline); each became a regression plan in the property test |
 | As components | The planner and the quarantined LLM are real models (DeepSeek, Qwen, GPT-4o-mini via an OpenAI-compatible gateway) | The security argument does not depend on them: tests replace the quarantined model with an adversary |
 
 What AI was **not** used for: the security guarantees are not "checked by an
