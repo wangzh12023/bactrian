@@ -5,11 +5,6 @@
 priv struct APolicy(@policy.Policy)
 
 ///|
-impl Show for APolicy with fn output(self, logger) {
-  logger.write_string(self.0.render())
-}
-
-///|
 impl @debug.Debug for APolicy with fn to_repr(self) {
   @debug.Repr::string(self.0.render())
 }
