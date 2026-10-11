@@ -338,7 +338,9 @@ fn Ctx::subscript(
       match key_of(key.value) {
         Some(k) =>
           match d.entries.get(k) {
-            Some((_, v)) => v.taint(via)
+            // Which value sits under a key may have been decided by a write
+            // through another key: the read depends on the dict's shape.
+            Some((_, v)) => v.taint(via.join(d.shape))
             None =>
               raise err(
                 Runtime("KeyError"),

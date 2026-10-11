@@ -545,13 +545,14 @@ fn Ctx::dict_method(
     }
     "setdefault" => {
       let (k, kk) = key_arg()
+      // Whether the key is added depends on the key, whichever branch runs.
+      d.shape = d.shape.join(here).join(k.label)
       let via = here.join(k.label).join(d.shape)
       match d.entries.get(kk) {
         Some((_, v)) => v.taint(via)
         None => {
           let v = a.pos.get(1).unwrap_or(none_item(plan)).taint(here)
           d.entries[kk] = (k, v)
-          d.shape = d.shape.join(here).join(k.label)
           v.taint(via)
         }
       }

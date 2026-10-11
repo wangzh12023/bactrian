@@ -406,14 +406,17 @@ fn Ctx::assign(
         VList(l) => {
           let i = self.index_of(key, l.items.length(), span)
           l.items[i] = stored
+          // Which slot changed depends on the index: every later read of the
+          // list must know it.
+          l.shape = l.shape.join(key.label).join(self.flow())
         }
         VDict(d) =>
           match key_of(key.value) {
             Some(k) => {
-              if !d.entries.contains(k) {
-                // Adding a key changes the dict's shape.
-                d.shape = d.shape.join(key.label).join(self.flow())
-              }
+              // Whether this adds a key or replaces one — and so the size of
+              // the dict and the value under every other key — depends on
+              // the key, even when the key already exists.
+              d.shape = d.shape.join(key.label).join(self.flow())
               d.entries[k] = (key, stored)
             }
             None =>
