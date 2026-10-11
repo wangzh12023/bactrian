@@ -1,0 +1,10 @@
+import {
+  "wangzh12023/bactrian/label",
+  "moonbitlang/core/string",
+}
+
+import {
+  "wangzh12023/bactrian/label",
+} for "test"
+
+warnings = "-implicit_impl_as_method"

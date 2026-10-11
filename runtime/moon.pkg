@@ -1,0 +1,19 @@
+import {
+  "wangzh12023/bactrian/label",
+  "wangzh12023/bactrian/policy",
+  "moonbitlang/core/bigint",
+  "moonbitlang/core/math",
+  "moonbitlang/core/string",
+  "marianoguerra/pure-py/ast",
+  "marianoguerra/pure-py/basic",
+  "marianoguerra/pure-py/parser",
+  "marianoguerra/pure-py/error" @pyerr,
+}
+
+import {
+  "wangzh12023/bactrian/label",
+  "wangzh12023/bactrian/policy",
+  "marianoguerra/pure-py/basic",
+} for "test"
+
+warnings = "-implicit_impl_as_method"

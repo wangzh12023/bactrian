@@ -1,0 +1,16 @@
+Bactrian
+Copyright 2026 Zihan Wang
+
+This product includes software developed by third parties:
+
+- marianoguerra/pure-py (Apache-2.0) — Python tokenizer and parser, used as a
+  dependency via mooncakes.io. https://github.com/marianoguerra/pure-py-mb
+
+Design references (no code copied unless stated in the file header):
+
+- CaMeL: "Defeating Prompt Injections by Design", E. Debenedetti et al., 2025.
+  Reference implementation: https://github.com/google-research/camel-prompt-injection
+  (Apache-2.0). Bactrian re-implements the ideas (privileged/quarantined LLM
+  split, capability labels, per-tool security policies) from scratch in MoonBit.
+- AgentDojo (MIT): https://github.com/ethz-spylab/agentdojo — benchmark
+  environments; scenario data adapted under the MIT license where noted.

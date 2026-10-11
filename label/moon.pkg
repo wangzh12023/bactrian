@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/core/immut/sorted_set" @iset,
+}
+
+import {
+  "moonbitlang/core/immut/sorted_set" @iset,
+  "moonbitlang/core/quickcheck" @qc,
+} for "test"
+
+warnings = "-implicit_impl_as_method"
