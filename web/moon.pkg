@@ -1,0 +1,15 @@
+import {
+  "wangzh12023/bactrian/label",
+  "wangzh12023/bactrian/policy",
+  "wangzh12023/bactrian/runtime",
+  "wangzh12023/bactrian/suites/banking",
+  "moonbit-community/rabbita",
+  "moonbit-community/rabbita/html",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "js"
+
+pkgtype(kind: "executable")
+
+warnings = "-implicit_impl_as_method"

@@ -65,6 +65,7 @@ pub fn Task::new(
   request : String,
   persona? : String = "",
   notes? : Array[String] = [],
+  examples? : Array[String] = [],
   max_attempts? : Int = 4,
   mode? : @runtime.Mode = Strict,
 ) -> Task {
@@ -74,7 +75,10 @@ pub fn Task::new(
     max_attempts,
     mode,
     messages: [
-      { role: "system", content: planner_prompt(world, persona~, notes~), },
+      {
+        role: "system",
+        content: planner_prompt(world, persona~, notes~, examples~),
+      },
       { role: "user", content: request, },
     ],
     memo: @runtime.Memo::new(),

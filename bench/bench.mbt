@@ -21,6 +21,8 @@ pub(all) struct CellResult {
   confirmations : Int
   /// Tools the runtime refused or held for approval.
   stopped_at : Array[String]
+  /// How each attempt ended (first line), for diagnosis.
+  attempts : Array[String]
 } derive(Debug, ToJson)
 
 ///|
@@ -69,6 +71,7 @@ pub async fn run_cell(
     task.prompt,
     persona="The user's name is Emma Johnson.",
     notes=@banking.notes,
+    examples=@banking.examples,
   )
   let mut planner_calls = 0
   let mut confirmations = 0
@@ -151,5 +154,20 @@ pub async fn run_cell(
     planner_calls,
     confirmations,
     stopped_at,
+    attempts: t.attempts.map(a => summarize_attempt(a.outcome)),
+  }
+}
+
+///|
+/// The most informative line of an attempt's outcome (the error line).
+fn summarize_attempt(outcome : String) -> String {
+  let lines = outcome
+    .split("\n")
+    .map(l => l.trim().to_owned())
+    .filter(l => l != "")
+    .collect()
+  match lines.filter(l => l.contains("Error:") || l.contains("Denied")) {
+    [first, ..] => first
+    [] => lines.get(0).unwrap_or("")
   }
 }

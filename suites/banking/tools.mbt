@@ -43,6 +43,7 @@ pub fn Bank::call(
   }
   match tool {
     "get_iban" => @runtime.ToolResult::plain(Json::string(self.iban))
+    "get_current_date" => @runtime.ToolResult::plain(Json::string("2022-03-07"))
     "get_balance" =>
       @runtime.ToolResult::plain(Json::number(self.balance), readers=only_user)
     "get_most_recent_transactions" => {

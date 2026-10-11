@@ -27,6 +27,7 @@ async fn run_request(request : String, attack : Int?) -> Unit {
     request,
     persona="The user's name is Emma Johnson.",
     notes=@banking.notes,
+    examples=@banking.examples,
   )
   println(dim("planner: \{planner.model}  quarantined: \{quarantined.model}"))
   if injection is Some(inj) {

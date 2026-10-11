@@ -142,5 +142,6 @@ pub async fn run_baseline_cell(
     planner_calls: calls,
     confirmations: 0,
     stopped_at: [],
+    attempts: [],
   }
 }
