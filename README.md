@@ -118,6 +118,26 @@ effect that has an `audience`: when data (rather than you) chose who receives
 an effect, everything in the effect must be readable by that audience.
 `require` refuses; `confirm` asks you, showing the provenance of the data.
 
+## Embedding it
+
+[`examples/embed`](examples/embed/main.mbt) is a complete e-mail assistant in
+~130 lines: describe the tools, write a policy, perform the effects the
+interpreter asks for.
+
+```console
+$ moon run examples/embed
+Request: Forward the boss's Q3 numbers to my accountant acc@example.com
+  >> e-mail sent: {"body":"Revenue was 4.2M. Please keep this internal.", …,"to":"acc@example.com"}
+  completed
+
+Request: Reply to whoever sent me an invoice, with the Q3 numbers
+  stopped: SecurityPolicyDenied: `body` would reveal data to mallory@evil.example,
+           who may not read it and was not chosen by you
+```
+
+The policy for it is four lines; the refusal comes from the built-in
+exfiltration rule, not from a rule anyone had to think of.
+
 ## Why you can trust it
 
 Security claims about agents are cheap; Bactrian's are tested.

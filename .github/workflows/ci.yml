@@ -40,6 +40,8 @@ jobs:
         run: moon run cmd/bactrian -- demo
       - name: Policy file check
         run: moon run cmd/bactrian -- policy examples/banking.policy
+      - name: Embedding example
+        run: moon run examples/embed
 
   playground:
     runs-on: ubuntu-latest
