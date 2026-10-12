@@ -21,7 +21,11 @@ Under the assumptions below, Bactrian guarantees:
    value — even when asked about trusted data — and that value is untrusted.
 4. **No laundering through errors.** Error messages caused by untrusted data
    are not shown to the planner.
-5. **At-most-once effects.** Retries never repeat a side effect.
+5. **At-most-once effects.** A retry never repeats an *identical* call: a call
+   with the same tool and the same arguments is answered from the recorded
+   result instead of being performed again. A corrected plan that changes an
+   argument of an effect (say the subject of a transfer) performs a new,
+   different effect, which the policy checks like any other.
 
 ## Assumptions
 
@@ -74,4 +78,5 @@ a research artefact) suggested several issues that Bactrian addresses and tests:
 - denial messages and error feedback do not contain the private values that
   caused them;
 - policies are data with tests, not untested Python callbacks;
-- side effects are not repeated when the planner retries.
+- an *identical* call is not performed twice when the planner retries (a call
+  whose arguments changed is a new effect, checked like any other).
