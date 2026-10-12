@@ -10,7 +10,10 @@ priv struct RunView {
 }
 
 ///|
-/// Runs the plan of `m` against a fresh bank, with `policy` deciding.
+/// Runs the plan of `m` against a fresh bank, with `policy` deciding. A
+/// policy that names tools or arguments the bank does not have is refused
+/// (fail closed); the policy that allows everything, used for the undefended
+/// side, names none.
 fn run_side(m : Model, policy : @policy.Policy) -> RunView {
   let s = scenarios()[m.scenario]
   let bank = scenario_bank(s, m.injection)
@@ -39,7 +42,18 @@ fn run_side(m : Model, policy : @policy.Policy) -> RunView {
     },
     approve: _ => m.approve,
   }
-  let world = { ..@banking.world(), policy, }
+  let world = @banking.world_with(policy~) catch {
+    InconsistentPolicy(errors) =>
+      return {
+        outcome: "refused — the policy does not fit the bank's tools: " +
+        errors.join("; "),
+        ok: false,
+        events: [],
+        effects: [],
+        stolen: false,
+        session: @runtime.Session::new(),
+      }
+  }
   let (outcome, session) = @runtime.drive(world, host, m.plan)
   let effects = []
   for t in bank.transactions[pre.transactions.length():] {

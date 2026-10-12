@@ -2,7 +2,7 @@
 /// Embedding Bactrian in your own agent: a minimal e-mail assistant.
 ///
 /// 1. Describe your tools and the types they return.
-/// 2. Write a policy.
+/// 2. Write a policy, and check that it fits the tools.
 /// 3. Drive the interpreter: perform the effects it asks for.
 ///
 /// Run with `moon run examples/embed`.
@@ -110,6 +110,16 @@ impl @runtime.Host for MailHost with fn perform(_, effect) {
 fn main {
   let policy = @policy.parse_policy(policy_text) catch {
     PolicySyntaxError(line~, message~) => abort("line \{line}: \{message}")
+  }
+  // Refuse a policy that names a tool or an argument the tools do not have:
+  // a rule about `recipeint` would never fire. Check it before building the
+  // world.
+  let signatures = Map::from_array(
+    tools().map(t => (t.name, t.params.map(p => p.name))),
+  )
+  policy.ensure_consistent(signatures) catch {
+    InconsistentPolicy(errors) =>
+      abort("the policy does not fit the tools: " + errors.join("; "))
   }
   let world = @runtime.World::new(tools(), types(), policy)
   let plans = [

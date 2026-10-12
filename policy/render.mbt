@@ -4,8 +4,7 @@ pub fn Cond::render(self : Cond) -> String {
   match self {
     Trusted(a) => "trusted(\{a})"
     Public(a) => "public(\{a})"
-    ReadableBy(a, ps) =>
-      "readable_by(\{a}, [" + ps.map(p => "\"\{p}\"").join(", ") + "])"
+    ReadableBy(a, ps) => "readable_by(\{a}, [" + quoted(ps) + "])"
     ContextTrusted => "context_trusted"
     AtMost(a, n) => "at_most(\{a}, \{n})"
     OneOf(a, js) =>
@@ -18,8 +17,16 @@ pub fn Cond::render(self : Cond) -> String {
 }
 
 ///|
+/// A string literal of the policy language: the string written as a JSON
+/// string, so quotes, backslashes and control characters are escaped the way
+/// `parse_policy` reads them back.
+fn quote(s : String) -> String {
+  Json::string(s).stringify()
+}
+
+///|
 fn quoted(xs : Array[String]) -> String {
-  xs.map(s => "\"\{s}\"").join(", ")
+  xs.map(quote).join(", ")
 }
 
 ///|
@@ -27,7 +34,7 @@ fn quoted(xs : Array[String]) -> String {
 /// `parse_policy(p.render())` reproduces `p`.
 pub fn Policy::render(self : Policy) -> String {
   let out = StringBuilder()
-  out.write_string("policy \"\{self.name}\"\n")
+  out.write_string("policy \{quote(self.name)}\n")
   if !self.self_ids.is_empty() {
     out.write_string("self \{quoted(self.self_ids)}\n")
   }
@@ -66,7 +73,7 @@ pub fn Policy::render(self : Policy) -> String {
             Confirm => "confirm"
           }
           out.write_string(
-            "  \{verb} \{rule.cond.render()} : \"\{rule.reason}\"\n",
+            "  \{verb} \{rule.cond.render()} : \{quote(rule.reason)}\n",
           )
         }
       }

@@ -156,6 +156,16 @@ fn Policy::audience_of(
 ///|
 /// `None` when the condition holds, otherwise `Some(argument)` naming the
 /// argument that made it fail.
+///
+/// An argument absent from the call (an optional parameter the plan left
+/// out) carries no data. So the conditions about where data came from and who
+/// may read it (`trusted`, `public`, `readable_by`) hold for it, while the
+/// conditions about its value (`at_most`, `one_of`, `present`) fail.
+///
+/// The checker cannot tell an omitted argument from one the tool does not
+/// have at all: a misspelt `require trusted(recipeint)` would hold for every
+/// call. `Policy::errors` reports such rules, and a world must not be built
+/// from a policy that has errors.
 fn Policy::failing_argument(
   self : Policy,
   cond : Cond,
@@ -274,10 +284,20 @@ pub fn Cond::arguments(self : Cond) -> Array[String] {
 }
 
 ///|
-/// Checks the policy against tool signatures (tool name to parameter names)
-/// and returns every inconsistency found. An empty result means every rule
-/// talks about arguments that exist and every tool has a policy.
-pub fn Policy::validate(
+/// The inconsistencies between the policy and the tool signatures (tool name
+/// to parameter names) that make the policy unsafe to enforce:
+///
+/// - a rule or an audience that names an argument the tool does not have. A
+///   condition about an argument that is never passed always holds (see
+///   `Policy::check`), and an audience made of such arguments is empty, so
+///   the no-exfiltration check never runs: a misspelt name turns a rule off
+///   without a sound;
+/// - a policy for a tool that does not exist, usually a misspelt tool name,
+///   which leaves the real tool to the `unknown` default.
+///
+/// Whoever builds a world from a policy must refuse the policy when this is
+/// not empty.
+pub fn Policy::errors(
   self : Policy,
   signatures : Map[String, Array[String]],
 ) -> Array[String] {
@@ -305,6 +325,42 @@ pub fn Policy::validate(
       }
     }
   }
+  problems
+}
+
+///|
+/// A policy that does not fit the tools it is meant to guard (see
+/// `Policy::errors`): one message per inconsistency.
+pub(all) suberror InconsistentPolicy {
+  InconsistentPolicy(Array[String])
+} derive(Debug)
+
+///|
+/// Raises `InconsistentPolicy` when the policy has `errors` against the tool
+/// signatures. Call it before building a world from a policy, so that a
+/// misspelt tool or argument name refuses to start instead of silently
+/// turning a rule off.
+pub fn Policy::ensure_consistent(
+  self : Policy,
+  signatures : Map[String, Array[String]],
+) -> Unit raise InconsistentPolicy {
+  let errors = self.errors(signatures)
+  if !errors.is_empty() {
+    raise InconsistentPolicy(errors)
+  }
+}
+
+///|
+/// Checks the policy against tool signatures (tool name to parameter names)
+/// and returns every inconsistency found: the `errors`, then the tools that
+/// have no policy (their calls are decided by the `unknown` default, which
+/// denies unless the policy says otherwise). An empty result means every rule
+/// talks about arguments that exist and every tool has a policy.
+pub fn Policy::validate(
+  self : Policy,
+  signatures : Map[String, Array[String]],
+) -> Array[String] {
+  let problems = self.errors(signatures)
   for tool, _ in signatures {
     if !self.tools.contains(tool) {
       problems.push(

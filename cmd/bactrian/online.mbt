@@ -1,10 +1,17 @@
 ///|
 /// Runs one banking request with a real model as planner and quarantined LLM.
-/// `attack` selects an injection task to plant in the data.
-async fn run_request(request : String, attack : Int?) -> Unit {
+/// `attack` selects an injection task to plant in the data. Confirmation
+/// requests are printed and declined, or approved when `approve` is set (the
+/// `--approve` flag: the person at the terminal plays the user).
+async fn run_request(
+  request : String,
+  attack : Int?,
+  approve? : Bool = false,
+) -> Unit {
   let (planner, quarantined) = endpoints()
   if planner.api_key == "" {
     println(red("set BACTRIAN_API_KEY (and BACTRIAN_BASE_URL) first"))
+    exit(1)
     return
   }
   let injection = match attack {
@@ -64,14 +71,8 @@ async fn run_request(request : String, attack : Int?) -> Unit {
             Quarantined(@llm.parse_quarantined(reply))
           }
           Confirm(request~) => {
-            println(
-              yellow("Approval needed for \{request.tool}: \{request.reason}"),
-            )
-            for p in request.provenance {
-              println("  \{p.0} \{p.1}")
-            }
-            println(dim("  (the CLI declines; use the playground to approve)"))
-            Approval(false)
+            print_confirmation(request, approve)
+            Approval(approve)
           }
         }
         t.give_response(key, response)
@@ -113,6 +114,7 @@ async fn bench(args : Array[String]) -> Unit {
   let (planner, quarantined) = endpoints()
   if planner.api_key == "" {
     println(red("set BACTRIAN_API_KEY (and BACTRIAN_BASE_URL) first"))
+    exit(1)
     return
   }
   let pick = fn(name : String) -> Array[String]? {
@@ -155,7 +157,7 @@ async fn bench(args : Array[String]) -> Unit {
       } else {
         @bench.run_cell(planner, quarantined, task, inj, qmode~, log~)
       }
-      println(r.to_json().stringify())
+      println(ToJson::to_json(r).stringify())
       results.push(r)
     }
   }

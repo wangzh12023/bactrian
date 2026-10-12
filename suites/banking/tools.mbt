@@ -169,7 +169,7 @@ fn transaction_result(txs : Array[Transaction]) -> @runtime.ToolResult {
     }
   }
   {
-    value: Json::array(txs.map(t => t.to_json())),
+    value: Json::array(txs.map(t => ToJson::to_json(t))),
     readers: Public,
     paths: { parties, readers, },
   }

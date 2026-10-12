@@ -14,5 +14,3 @@ import {
 supported_targets = "js"
 
 pkgtype(kind: "executable")
-
-warnings = "-implicit_impl_as_method"

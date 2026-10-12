@@ -1,16 +1,78 @@
 Bactrian
 Copyright 2026 Zihan Wang
 
-This product includes software developed by third parties:
+Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-- marianoguerra/pure-py (Apache-2.0) — Python tokenizer and parser, used as a
-  dependency via mooncakes.io. https://github.com/marianoguerra/pure-py-mb
 
-Design references (no code copied unless stated in the file header):
+Third-party software compiled into the CLI and the playground
+-------------------------------------------------------------
 
-- CaMeL: "Defeating Prompt Injections by Design", E. Debenedetti et al., 2025.
-  Reference implementation: https://github.com/google-research/camel-prompt-injection
-  (Apache-2.0). Bactrian re-implements the ideas (privileged/quarantined LLM
-  split, capability labels, per-tool security policies) from scratch in MoonBit.
-- AgentDojo (MIT): https://github.com/ethz-spylab/agentdojo — benchmark
-  environments; scenario data adapted under the MIT license where noted.
+The CLI (cmd/bactrian, wasm and js) and the playground (web, js) are built
+from Bactrian's own code and the following libraries, fetched from
+mooncakes.io at the versions pinned in moon.mod. All are licensed under the
+Apache License, Version 2.0, the same license as Bactrian (see LICENSE for the
+full text).
+
+- moonbitlang/core 0.10.14 (the MoonBit standard library, linked into every
+  build). Copyright International Digital Economy Academy.
+  https://github.com/moonbitlang/core
+  Its NOTICE file is reproduced in third_party/moonbitlang-core/NOTICE: it
+  lists the code core adapted from fdlibm, V8, Go, musl and FreeBSD under
+  their own permissive licenses.
+- moonbitlang/async 0.22.4 (async runtime and HTTP client; CLI and
+  playground). Copyright 2025 International Digital Economy Academy.
+  https://github.com/moonbitlang/async
+- moonbitlang/x 0.5.5 (packages fs and sys; CLI only).
+  Copyright 2025 International Digital Economy Academy.
+  https://github.com/moonbitlang/x
+- marianoguerra/pure-py 0.10.0 (Python tokenizer and parser) and its
+  dependency marianoguerra/error-report 0.1.0. Copyright 2026 Mariano Guerra.
+  https://github.com/marianoguerra/pure-py-mb
+- moonbit-community/rabbita 0.16.4 (web UI framework; playground only).
+  https://github.com/moonbit-community/rabbita
+
+
+Data and text adapted from AgentDojo (MIT)
+------------------------------------------
+
+AgentDojo: https://github.com/ethz-spylab/agentdojo
+Copyright (c) 2024 Edoardo Debenedetti, Jie Zhang, Mislav Balunovic,
+Luca Beurer-Kellner, Marc Fischer, and Florian Tramèr.
+Licensed under the MIT License; the full text is in
+third_party/agentdojo/LICENSE.
+
+Adapted, with modifications, in MoonBit:
+
+- suites/banking/env.mbt: the banking environment (account, transactions,
+  scheduled transactions, files, user profile);
+- suites/banking/tasks.mbt: the banking user tasks and injection tasks
+  (prompts and success criteria) and the "important_instructions" attack
+  text;
+- suites/banking/spec.mbt and suites/banking/tools.mbt: the banking tool
+  names, parameters and descriptions, and the behaviour of the tools;
+- suites/mail/data.mbt, suites/mail/env.mbt and suites/mail/spec.mbt: the
+  inbox, tools and e-mail tasks of the workspace suite;
+- web/scenarios.mbt: playground scenarios built on that data.
+
+
+Ideas and annotations from CaMeL (Apache-2.0)
+---------------------------------------------
+
+CaMeL: "Defeating Prompt Injections by Design", E. Debenedetti et al., 2025.
+Reference implementation: https://github.com/google-research/camel-prompt-injection
+Copyright 2025 Google LLC. Licensed under the Apache License, Version 2.0.
+
+Bactrian re-implements CaMeL's ideas (the privileged/quarantined LLM split,
+capability labels with sources and readers, per-tool security policies, the
+`query_ai_assistant` interface with its `have_enough_information` flag) from
+scratch in MoonBit. No CaMeL source code is copied.
+
+One part is a translation rather than a re-implementation: the security
+annotations of the banking tools in suites/banking/tools.mbt (who wrote each
+part of a tool's result and who may read it) and the banking policy in
+suites/banking/spec.mbt were translated from CaMeL's AgentDojo annotations
+(src/camel/pipeline_elements/agentdojo_function.py) and banking policy
+(src/camel/pipeline_elements/security_policies/banking.py), with
+modifications: file contents are labelled public rather than private, a
+payee taken from data asks for confirmation instead of being denied, and the
+rules are written in Bactrian's policy language.

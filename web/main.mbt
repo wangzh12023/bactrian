@@ -102,7 +102,16 @@ fn update(
       ({ ..model, approve: !model.approve, ran: false, }, @rabbita.none)
     Run => ({ ..model, ran: true, }, @rabbita.none)
     Reset => (initial(model.scenario, live=model.live), @rabbita.none)
-    LiveEdit(f) => ({ ..model, live: f(model.live), }, @rabbita.none)
+    LiveEdit(f) => {
+      let live = f(model.live)
+      // The stored key follows the form: updated while "remember" is ticked,
+      // removed the moment it is unticked.
+      if live.remember != model.live.remember ||
+        live.api_key != model.live.api_key {
+        save_key(live)
+      }
+      ({ ..model, live, }, @rabbita.none)
+    }
     LiveStart => {
       let live = { ..model.live, status: Planning, }
       save_settings(live)

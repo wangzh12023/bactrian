@@ -36,20 +36,9 @@ fn tokenize(
       continue
     }
     if c == '"' {
-      let sb = StringBuilder()
-      i += 1
-      while i < n && chars[i] != '"' {
-        if chars[i] == '\\' && i + 1 < n {
-          i += 1
-        }
-        sb.write_char(chars[i])
-        i += 1
-      }
-      if i >= n {
-        raise PolicySyntaxError(line=lineno, message="unterminated string")
-      }
-      i += 1
-      toks.push(Str(sb.to_string()))
+      let (s, next) = read_string(chars, i, lineno)
+      toks.push(Str(s))
+      i = next
       continue
     }
     if c.is_ascii_digit() ||
@@ -83,6 +72,92 @@ fn tokenize(
     raise PolicySyntaxError(line=lineno, message="unexpected character `\{c}`")
   }
   toks
+}
+
+///|
+/// Reads the string literal whose opening quote is `chars[start]` and returns
+/// its value and the index after the closing quote.
+///
+/// String literals are spelled like JSON strings: `\"`, `\\`, `\/`, `\b`,
+/// `\f`, `\n`, `\r`, `\t` and `\uXXXX` (with surrogate pairs) are the
+/// escapes, and any other escape is an error. `Policy::render` writes every
+/// string with `Json::stringify`, so whatever it writes reads back as the
+/// same string.
+fn read_string(
+  chars : Array[Char],
+  start : Int,
+  lineno : Int,
+) -> (String, Int) raise PolicySyntaxError {
+  let n = chars.length()
+  let sb = StringBuilder()
+  let mut i = start + 1
+  while i < n {
+    let c = chars[i]
+    if c == '"' {
+      return (sb.to_string(), i + 1)
+    }
+    if c != '\\' {
+      sb.write_char(c)
+      i += 1
+      continue
+    }
+    guard chars.get(i + 1) is Some(e) else { break }
+    i += 2
+    match e {
+      '"' | '\\' | '/' => sb.write_char(e)
+      'b' => sb.write_char('\b')
+      'f' => sb.write_char('\u{0C}')
+      'n' => sb.write_char('\n')
+      'r' => sb.write_char('\r')
+      't' => sb.write_char('\t')
+      'u' => {
+        let bad = PolicySyntaxError(
+          line=lineno,
+          message="`\\u` must be followed by four hex digits of a character",
+        )
+        guard hex4(chars, i) is Some(hi) else { raise bad }
+        i += 4
+        let code = if hi is (0xD800..=0xDBFF) {
+          guard chars.get(i) is Some('\\') &&
+            chars.get(i + 1) is Some('u') &&
+            hex4(chars, i + 2) is Some(lo) &&
+            lo is (0xDC00..=0xDFFF) else {
+            raise bad
+          }
+          i += 6
+          0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00)
+        } else {
+          hi
+        }
+        guard code.to_char() is Some(ch) else { raise bad }
+        sb.write_char(ch)
+      }
+      other =>
+        raise PolicySyntaxError(
+          line=lineno,
+          message="unknown escape `\\\{other}` in a string (write `\\\\` for a backslash)",
+        )
+    }
+  }
+  raise PolicySyntaxError(line=lineno, message="unterminated string")
+}
+
+///|
+/// The value of the four hex digits at `chars[at]`, if there are four.
+fn hex4(chars : Array[Char], at : Int) -> Int? {
+  let mut v = 0
+  for k in 0..<4 {
+    guard chars.get(at + k) is Some(c) && c.is_ascii_hexdigit() else {
+      return None
+    }
+    let d = if c.is_ascii_digit() {
+      c.to_int() - '0'.to_int()
+    } else {
+      (c.to_int() | 0x20) - 'a'.to_int() + 10
+    }
+    v = v * 16 + d
+  }
+  Some(v)
 }
 
 ///|
@@ -248,7 +323,8 @@ fn Cursor::cond(self : Cursor) -> Cond raise PolicySyntaxError {
 ///
 /// Rules are indented under their `effect`. `require` blocks the call when the
 /// condition fails; `confirm` asks the user. Lines starting with `#` are
-/// comments.
+/// comments. Quoted strings are spelled like JSON strings (`\"` is a quote,
+/// `\\` a backslash, `\n` a newline).
 pub fn parse_policy(text : String) -> Policy raise PolicySyntaxError {
   let mut name = "policy"
   let self_ids = []
