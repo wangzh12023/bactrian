@@ -1,6 +1,6 @@
 # Bactrian 🐫🐫 双峰驼
 
-**让 AI 智能体从设计上免疫提示注入——不是识别攻击，而是让攻击无效。**
+**让注入的文本无法决定智能体的行为——靠设计，而不是靠检测。**
 
 [![CI](https://github.com/wangzh12023/bactrian/actions/workflows/ci.yml/badge.svg)](https://github.com/wangzh12023/bactrian/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
@@ -24,7 +24,7 @@ Bactrian（双峰驼）是一个用 **MoonBit** 实现的智能体运行时，�
 
 注入的文本仍然可以**填写用户要求填写的空**（比如账单上的金额），但它**永远无法决定**智能体做什么、把钱付给谁、把你的数据发到哪里。
 
-设计思想来自 Google DeepMind 的 CaMeL 论文（[Debenedetti et al., 2025](https://arxiv.org/abs/2503.18813)）。官方 CaMeL 是一个"不维护、可能有 bug"的 Python 研究原型；Bactrian 是一个**独立的、可嵌入的工程化实现**，并且加入了策略语言、确定性回放和有性质测试保障的安全性质。
+设计思想来自 Google DeepMind 的 CaMeL 论文（[Debenedetti et al., 2025](https://arxiv.org/abs/2503.18813)）。官方 CaMeL 代码按其 README 的说法是用来复现论文结果的研究原型，"很可能包含 bug"，作者也不打算维护；Bactrian 是一个**独立的、可嵌入的工程化实现**，并且加入了策略语言、确定性回放和有性质测试保障的安全性质。
 
 **一组数字：** 在 AgentDojo 银行套件上，不设防的 GPT-4o 智能体在 144 次攻击中被说服了 **67 次**；同一个模型放进 Bactrian，只有 **1 次**——而且是评测本身的误报（[详见评测](#真实大模型评测agentdojo-银行套件16-任务--9-种注入)）。
 
