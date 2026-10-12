@@ -67,6 +67,108 @@ fn run_task(
 test "the banking policy is consistent with the tool signatures" {
   let w = @banking.world()
   inspect(w.policy.validate(w.signatures()).join("\n"), content="")
+  // The suite's own signatures are the ones the world was built from.
+  assert_eq(@banking.signatures(), w.signatures())
+}
+
+///|
+test "a world is not built from a policy with a misspelt argument" {
+  // `recipeint` is not a parameter of `send_money`, so this rule could never
+  // fire: every payment would be allowed. The world refuses to exist.
+  let typo = @policy.parse_policy(
+    (
+      #|policy "typo"
+      #|read read_file
+      #|effect send_money audience recipient
+      #|  require trusted(recipeint) : "the payee must come from you"
+    ),
+  )
+  let refused = try @banking.world_with(policy=typo) catch {
+    InconsistentPolicy(errors) => errors.join("\n")
+  } noraise {
+    _ => "(a world was built)"
+  }
+  inspect(
+    refused,
+    content="`send_money`: rule `trusted(recipeint)` refers to unknown argument `recipeint`",
+  )
+  // The same for a misspelt tool: `send_mony` would leave `send_money`
+  // without a policy.
+  let wrong_tool = @policy.parse_policy(
+    (
+      #|policy "typo"
+      #|effect send_mony audience recipient
+    ),
+  )
+  let refused = try @banking.world_with(policy=wrong_tool) catch {
+    InconsistentPolicy(errors) => errors.join("\n")
+  } noraise {
+    _ => "(a world was built)"
+  }
+  inspect(refused, content="policy for unknown tool `send_mony`")
+  // A policy that says nothing about a tool is fine: its calls are denied
+  // by default.
+  let silent = @policy.parse_policy("policy \"reads only\"\nread read_file")
+  inspect(@banking.world_with(policy=silent).policy.name, content="reads only")
+}
+
+///|
+test "examples/banking.policy is a copy of the banking policy" {
+  // The policy the playground, the CLI and the benchmark use.
+  let p = @banking.policy()
+  let canonical = p.render()
+  inspect(
+    canonical,
+    content=(
+      #|policy "banking"
+      #|self "me", "DE89370400440532013000"
+      #|trust tools get_balance, get_iban, get_user_info, get_current_date, get_most_recent_transactions, get_scheduled_transactions
+      #|context confirm
+      #|
+      #|read get_balance
+      #|
+      #|read get_current_date
+      #|
+      #|read get_iban
+      #|
+      #|read get_most_recent_transactions
+      #|
+      #|read get_scheduled_transactions
+      #|
+      #|read get_user_info
+      #|
+      #|read read_file
+      #|
+      #|effect schedule_transaction audience recipient
+      #|  confirm trusted(recipient) : "the payee was not chosen by you: it comes from data"
+      #|
+      #|effect send_money audience recipient
+      #|  confirm trusted(recipient) : "the payee was not chosen by you: it comes from data"
+      #|
+      #|effect update_password
+      #|  require trusted(password) : "a new password must come from you"
+      #|
+      #|effect update_scheduled_transaction audience recipient
+      #|  confirm trusted(id) : "which standing order to change was not chosen by you"
+      #|  confirm trusted(recipient) : "the new payee was not chosen by you: it comes from data"
+      #|
+      #|effect update_user_info
+      #|  confirm all(trusted(first_name), trusted(last_name), trusted(street), trusted(city)) : "your profile would be changed to values taken from data"
+      #|
+    ),
+  )
+  assert_eq(@policy.parse_policy(canonical).render(), canonical)
+  // `examples/banking.policy` is a copy of `policy_text` under a comment
+  // header. Tests run in the module's root directory on every backend.
+  let file = @fs.read_file_to_string("examples/banking.policy")
+  let lines = file.split("\n").map(l => l.to_owned()).collect()
+  let header = lines.iter().take_while(l => l.has_prefix("#")).count()
+  assert_true(header > 0)
+  assert_eq(lines[header], "")
+  let body = lines[header + 1:].to_owned().join("\n")
+  assert_eq(body, @banking.policy_text)
+  // And it means the same policy, comments included.
+  assert_eq(@policy.parse_policy(file).render(), canonical)
 }
 
 ///|

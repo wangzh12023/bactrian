@@ -329,4 +329,164 @@ test "validate finds rules about arguments that do not exist" {
       #|policy for unknown tool `get_most_recent_transactions`
     ),
   )
+  // A tool without a policy is denied by default: a gap, not an error.
+  let errors = banking.errors(sigs)
+  errors.sort_by((a, b) => a.lexical_compare(b))
+  inspect(
+    errors.join("\n"),
+    content=(
+      #|`update_password`: rule `trusted(password)` refers to unknown argument `password`
+      #|policy for unknown tool `get_balance`
+      #|policy for unknown tool `get_iban`
+      #|policy for unknown tool `get_most_recent_transactions`
+    ),
+  )
+}
+
+///|
+test "a misspelt argument name is an error, because the rule would never fire" {
+  let typo = @policy.parse_policy(
+    (
+      #|policy "typo"
+      #|effect send_money audience recipient
+      #|  require trusted(recipeint) : "the payee must come from you"
+    ),
+  )
+  let sigs = Map::from_array([
+    ("send_money", ["recipient", "amount", "subject", "date"]),
+  ])
+  inspect(
+    typo.errors(sigs).join("\n"),
+    content="`send_money`: rule `trusted(recipeint)` refers to unknown argument `recipeint`",
+  )
+  inspect(
+    typo.validate(sigs).join("\n"),
+    content="`send_money`: rule `trusted(recipeint)` refers to unknown argument `recipeint`",
+  )
+  // This is why such a policy must be refused: the checker cannot tell the
+  // misspelt argument from an optional one the plan left out, so the rule
+  // holds even for a payee taken from a file.
+  let v = typo.check(
+    call("send_money", [
+      ("recipient", file_arg("US133000000121212121212")),
+      ("amount", plan_arg(1)),
+    ]),
+  )
+  debug_inspect(v.decision, content="Allow")
+  // Spelt correctly, the same rule denies that call.
+  let fixed = @policy.parse_policy(
+    (
+      #|policy "fixed"
+      #|effect send_money audience recipient
+      #|  require trusted(recipient) : "the payee must come from you"
+    ),
+  )
+  debug_inspect(
+    fixed.check(
+      call("send_money", [
+        ("recipient", file_arg("US133000000121212121212")),
+        ("amount", plan_arg(1)),
+      ]),
+    ).decision,
+    content=(
+      #|Deny("the payee must come from you")
+    ),
+  )
+  let misspelt_audience = @policy.parse_policy(
+    (
+      #|policy "typo"
+      #|effect send_money audience recipients
+    ),
+  )
+  inspect(
+    misspelt_audience.errors(sigs).join("\n"),
+    content="`send_money`: audience refers to unknown argument `recipients`",
+  )
+}
+
+///|
+test "conditions on an omitted optional argument" {
+  // `update_scheduled_transaction(id, recipient=None, ...)`: when the plan
+  // leaves `recipient` out, there is no data whose source could be wrong, so
+  // `trusted` and `public` hold; a condition on its value does not.
+  let p = @policy.parse_policy(
+    (
+      #|policy "optional"
+      #|effect update_scheduled_transaction
+      #|  require trusted(recipient) : "the payee must come from you"
+      #|  confirm at_most(amount, 1000) : "large amounts need your approval"
+    ),
+  )
+  let only_id = call("update_scheduled_transaction", [("id", plan_arg(7))])
+  let v = p.check(only_id)
+  debug_inspect(
+    v.decision,
+    content=(
+      #|Ask("large amounts need your approval")
+    ),
+  )
+  inspect(v.concerns.map(c => c.culprit).join(","), content="amount")
+}
+
+///|
+test "quoted strings use JSON escapes and render back the same" {
+  let text =
+    #|policy "say \"hi\""
+    #|self "C:\\Users\\me"
+    #|effect post audience to
+    #|  require readable_by(body, ["a\"b"]) : "a \"quoted\" reason with a \\ and a\nnewline"
+  let p = @policy.parse_policy(text)
+  inspect(p.name, content="say \"hi\"")
+  inspect(p.self_ids[0], content="C:\\Users\\me")
+  let reason = p.tools["post"].rules[0].reason
+  inspect(
+    reason,
+    content=(
+      #|a "quoted" reason with a \ and a
+      #|newline
+    ),
+  )
+  let rendered = p.render()
+  inspect(
+    rendered,
+    content=(
+      #|policy "say \"hi\""
+      #|self "C:\\Users\\me"
+      #|
+      #|effect post audience to
+      #|  require readable_by(body, ["a\"b"]) : "a \"quoted\" reason with a \\ and a\nnewline"
+      #|
+    ),
+  )
+  assert_eq(@policy.parse_policy(rendered).render(), rendered)
+  inspect(
+    @policy.parse_policy("policy \"\\u00e9\\ud83d\\ude00\"").name,
+    content="é😀",
+  )
+  // `\t` is a tab, as in JSON; an escape JSON does not have is an error.
+  inspect(@policy.parse_policy("policy \"C:\\temp\"").name, content="C:\temp")
+  try @policy.parse_policy("policy \"C:\\quarterly\"") catch {
+    PolicySyntaxError(line~, message~) =>
+      inspect(
+        "\{line}: \{message}",
+        content="1: unknown escape `\\q` in a string (write `\\\\` for a backslash)",
+      )
+  } noraise {
+    _ => fail("expected a syntax error")
+  }
+  try @policy.parse_policy("policy \"\\ud83d alone\"") catch {
+    PolicySyntaxError(line~, message~) =>
+      inspect(
+        "\{line}: \{message}",
+        content="1: `\\u` must be followed by four hex digits of a character",
+      )
+  } noraise {
+    _ => fail("expected a syntax error")
+  }
+  try @policy.parse_policy("policy \"unterminated\\\"") catch {
+    PolicySyntaxError(line~, message~) =>
+      inspect("\{line}: \{message}", content="1: unterminated string")
+  } noraise {
+    _ => fail("expected a syntax error")
+  }
 }

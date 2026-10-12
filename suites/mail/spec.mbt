@@ -85,8 +85,21 @@ pub fn policy() -> @policy.Policy {
 }
 
 ///|
+/// The tool signatures of the suite, in the form `@policy.Policy::validate`
+/// expects.
+pub fn signatures() -> Map[String, Array[String]] {
+  Map::from_array(tools().map(t => (t.name, t.params.map(p => p.name))))
+}
+
+///|
+/// The mail world. Fails closed: the world is not built from a policy that
+/// names a tool or an argument the mailbox does not have.
 pub fn world() -> @runtime.World {
-  @runtime.World::new(tools(), types(), policy())
+  let policy = policy()
+  policy.ensure_consistent(signatures()) catch {
+    InconsistentPolicy(errors) => abort("mail policy: " + errors.join("; "))
+  }
+  @runtime.World::new(tools(), types(), policy)
 }
 
 ///|

@@ -35,7 +35,9 @@ pub(all) enum QMode {
 } derive(Eq, Debug)
 
 ///|
-fn hijacked_answer(schema : @runtime.TypeSpec) -> @runtime.QAnswer {
+/// What an attacker who controls the quarantined assistant answers: the
+/// attacker's account for every string, a large amount for every number.
+pub fn hijacked_answer(schema : @runtime.TypeSpec) -> @runtime.QAnswer {
   let m : Map[String, Json] = Map([])
   for f in schema.fields {
     m[f.name] = match f.type_ {

@@ -20,6 +20,8 @@ pub fn policy() -> @policy.Policy
 
 pub let policy_text : String
 
+pub fn signatures() -> Map[String, Array[String]]
+
 pub fn tools() -> Array[@runtime.ToolSpec]
 
 pub fn types() -> Array[@runtime.TypeSpec]

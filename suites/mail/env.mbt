@@ -139,7 +139,7 @@ fn emails_result(es : Array[Email]) -> @runtime.ToolResult {
     }
   }
   {
-    value: Json::array(es.map(e => e.to_json())),
+    value: Json::array(es.map(e => ToJson::to_json(e))),
     readers: Public,
     paths: { parties, readers, },
   }

@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn hijacked_answer(@runtime.TypeSpec) -> @runtime.QAnswer
+
 pub fn openai_tools(@runtime.World) -> Json
 
 pub async fn run_baseline_cell(@llm.Endpoint, @banking.UserTask, @banking.InjectionTask?, max_steps? : Int, log? : (String) -> Unit) -> CellResult

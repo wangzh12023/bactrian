@@ -28,6 +28,8 @@ pub let policy_text : String
 
 pub fn reference_plan(String) -> String?
 
+pub fn signatures() -> Map[String, Array[String]]
+
 pub fn tools() -> Array[@runtime.ToolSpec]
 
 pub fn types() -> Array[@runtime.TypeSpec]
@@ -35,6 +37,8 @@ pub fn types() -> Array[@runtime.TypeSpec]
 pub fn user_tasks() -> Array[UserTask]
 
 pub fn world() -> @runtime.World
+
+pub fn world_with(policy? : @policy.Policy) -> @runtime.World raise @policy.InconsistentPolicy
 
 // Errors
 

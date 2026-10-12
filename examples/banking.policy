@@ -1,4 +1,7 @@
-# The banking policy used by the playground, the CLI and the benchmark.
+# The banking policy, as a file. The playground, the CLI and the benchmark use
+# `policy_text` in suites/banking/spec.mbt; everything below this comment is a
+# copy of it, and a test in suites/banking/banking_test.mbt fails when the two
+# differ.
 # Check it with: moon run cmd/bactrian -- policy examples/banking.policy
 
 policy "banking"

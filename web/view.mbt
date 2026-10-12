@@ -105,6 +105,13 @@ fn scenario_view(
         } else {
           match policy {
             None => p(class="error", "The policy has a syntax error.")
+            Some(pol) if !pol.errors(@banking.signatures()).is_empty() =>
+              // Fail closed: a rule about a tool or an argument the bank does
+              // not have would never fire, so such a policy is not run.
+              p(
+                class="error",
+                "The policy names tools or arguments the bank does not have (see below), so it is not run.",
+              )
             Some(pol) =>
               div(class="sides", [
                 side(
@@ -304,7 +311,7 @@ fn short(s : String, n : Int) -> String {
 
 ///|
 fn validation(pol : @policy.Policy) -> @html.Html {
-  let problems = pol.validate(@banking.world().signatures())
+  let problems = pol.validate(@banking.signatures())
   if problems.is_empty() {
     p(class="ok", "✓ The policy is consistent with the bank's tools.")
   } else {

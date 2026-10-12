@@ -197,8 +197,30 @@ pub fn policy() -> @policy.Policy {
 }
 
 ///|
+/// The tool signatures of the suite, in the form `@policy.Policy::validate`
+/// expects.
+pub fn signatures() -> Map[String, Array[String]] {
+  Map::from_array(tools().map(t => (t.name, t.params.map(p => p.name))))
+}
+
+///|
+/// The banking world guarded by `policy` (the suite's own by default).
+///
+/// Fails closed: a policy that names a tool or an argument the bank does not
+/// have is refused, because a rule about an argument that never appears in a
+/// call never fires.
+pub fn world_with(
+  policy? : @policy.Policy = policy(),
+) -> @runtime.World raise @policy.InconsistentPolicy {
+  policy.ensure_consistent(signatures())
+  @runtime.World::new(tools(), types(), policy)
+}
+
+///|
 pub fn world() -> @runtime.World {
-  @runtime.World::new(tools(), types(), policy())
+  world_with() catch {
+    InconsistentPolicy(errors) => abort("banking policy: " + errors.join("; "))
+  }
 }
 
 ///|

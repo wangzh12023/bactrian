@@ -20,6 +20,10 @@ pub fn read(String) -> ToolPolicy
 pub fn require(Cond, String) -> Rule
 
 // Errors
+pub(all) suberror InconsistentPolicy {
+  InconsistentPolicy(Array[String])
+} derive(@debug.Debug)
+
 pub(all) suberror PolicySyntaxError {
   PolicySyntaxError(line~ : Int, message~ : String)
 } derive(@debug.Debug)
@@ -75,6 +79,8 @@ pub(all) struct Policy {
   unknown_tool : Decision
 }
 pub fn Policy::check(Self, CallView) -> Verdict
+pub fn Policy::ensure_consistent(Self, Map[String, Array[String]]) -> Unit raise InconsistentPolicy
+pub fn Policy::errors(Self, Map[String, Array[String]]) -> Array[String]
 pub fn Policy::is_trusted(Self, @label.Label) -> Bool
 pub fn Policy::new(String, Array[ToolPolicy], trusted_tools? : Array[String], trusted_parties? : Array[String], self_ids? : Array[String], context_integrity? : Severity, unknown_tool? : Decision) -> Self
 pub fn Policy::render(Self) -> String

@@ -45,6 +45,13 @@ jobs:
         run: moon run cmd/bactrian -- demo
       - name: Policy file check
         run: moon run cmd/bactrian -- policy examples/banking.policy
+      - name: A policy with a misspelt argument is refused
+        shell: bash
+        run: |
+          printf 'policy "typo"\neffect send_money audience recipient\n  require trusted(recipeint) : "x"\n' > typo.policy
+          if moon run cmd/bactrian -- policy typo.policy; then
+            echo "expected a non-zero exit status"; exit 1
+          fi
       - name: Embedding example
         run: moon run examples/embed
 
@@ -64,6 +71,10 @@ jobs:
           mkdir -p site
           cp web/static/index.html web/static/style.css site/
           cp _build/js/release/build/web/web.js site/playground.js
+          # The deployed bundle contains third-party code and AgentDojo data:
+          # ship the licenses and notices with it.
+          cp LICENSE NOTICE site/
+          cp -r third_party site/third_party
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

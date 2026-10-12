@@ -89,8 +89,11 @@ fn demo() -> Unit {
     let bank = @banking.attacked_bank(task, inj)
     let pre = bank.snapshot()
     let world = if round == 0 {
+      // The undefended run: a policy that names no tool and allows all.
       let permissive = @policy.Policy::new("none", [], unknown_tool=Allow)
-      { ..@banking.world(), policy: permissive, }
+      @banking.world_with(policy=permissive) catch {
+        InconsistentPolicy(errors) => abort(errors.join("; "))
+      }
     } else {
       @banking.world()
     }
@@ -131,49 +134,121 @@ fn demo() -> Unit {
 }
 
 ///|
+/// Parses a policy file, prints it back in canonical form and checks it
+/// against the banking tools. Exits with 1 when the file cannot be read, has
+/// a syntax error, or names tools or arguments the bank does not have (such a
+/// rule would never fire). Banking tools the policy does not mention are
+/// only reported: their calls are denied by default.
 fn check_policy(path : String) -> Unit {
   let text = @fs.read_file_to_string(path) catch {
-    e => {
-      println("cannot read \{path}: \{Repr(e)}")
+    IOError(msg) => {
+      println(red("cannot read \{path}: \{msg}"))
+      exit(1)
       return
     }
   }
   let p = @policy.parse_policy(text) catch {
     PolicySyntaxError(line~, message~) => {
       println(red("\{path}:\{line}: \{message}"))
+      exit(1)
       return
     }
   }
   println(p.render())
-  let problems = p.validate(@banking.world().signatures())
-  if problems.is_empty() {
+  let signatures = @banking.signatures()
+  let errors = p.errors(signatures)
+  let gaps = p.validate(signatures).filter(pr => !errors.contains(pr))
+  if errors.is_empty() && gaps.is_empty() {
     println(green("✓ consistent with the banking tools"))
-  } else {
+  }
+  if !gaps.is_empty() {
     println(yellow("Against the banking tools:"))
-    for pr in problems {
+    for pr in gaps {
       println("  - \{pr}")
     }
+  }
+  if !errors.is_empty() {
+    println(
+      red(
+        "✗ refused: these name tools or arguments the banking tools do not have, so the rules would never fire:",
+      ),
+    )
+    for pr in errors {
+      println("  - \{pr}")
+    }
+    exit(1)
   }
 }
 
 ///|
-fn run_plan_file(path : String) -> Unit {
+/// Prints a confirmation request — what needs approval, why, and where the
+/// offending data came from — and the decision.
+fn print_confirmation(req : @runtime.ConfirmRequest, approve : Bool) -> Unit {
+  println(yellow("Approval needed for \{req.tool}: \{req.reason}"))
+  let args = req.args
+    .iter()
+    .map(kv => "\{kv.0}=\{kv.1.stringify()}")
+    .collect()
+    .join(", ")
+  println("  call: \{req.tool}(\{args})")
+  for p in req.provenance {
+    println("  \{p.0} \{p.1}")
+  }
+  if approve {
+    println(yellow("  → approved (--approve)"))
+  } else {
+    println(dim("  → declined (pass --approve to approve)"))
+  }
+}
+
+///|
+/// Runs a plan written by hand against the simulated bank, offline. With
+/// `attack`, the documents carry that injection task; with `hijack`, the
+/// attacker answers every `query_ai_assistant` call (otherwise the assistant
+/// answers "not enough information"). Confirmation requests are declined
+/// unless `approve`. Exits with 1 when the file cannot be read.
+fn run_plan_file(
+  path : String,
+  attack : Int?,
+  hijack? : Bool = false,
+  approve? : Bool = false,
+) -> Unit {
   let plan = @fs.read_file_to_string(path) catch {
-    e => {
-      println("cannot read \{path}: \{Repr(e)}")
+    IOError(msg) => {
+      println(red("cannot read \{path}: \{msg}"))
+      exit(1)
       return
     }
   }
-  let bank = @banking.Bank::new()
+  let injection = attack.bind(i => @banking.injection_tasks().get(i))
+  let bank = match injection {
+    Some(inj) => {
+      println(yellow("injected into every document: ") + inj.goal)
+      @banking.attacked_bank(
+        {
+          id: "plan",
+          prompt: "",
+          vectors: @banking.Vector::all(),
+          utility: (_, _, _) => true,
+        },
+        inj,
+      )
+    }
+    None => @banking.Bank::new()
+  }
+  let pre = bank.snapshot()
   let host : @banking.BankHost = {
     bank,
-    quarantined: (_, _, _) => Quarantined(NotEnoughInformation),
+    quarantined: (_, schema, _) => {
+      if hijack {
+        Quarantined(@bench.hijacked_answer(schema))
+      } else {
+        Quarantined(NotEnoughInformation)
+      }
+    },
     approve: req => {
-      println(
-        yellow("approval requested for \{req.tool}: \{req.reason}") +
-        " → refused",
-      )
-      false
+      print_confirmation(req, approve)
+      approve
     },
   }
   let (outcome, session) = @runtime.drive(@banking.world(), host, plan)
@@ -184,5 +259,12 @@ fn run_plan_file(path : String) -> Unit {
       println(@agent.feedback(plan, e, @banking.policy()))
     }
     _ => println(green("completed"))
+  }
+  if injection is Some(inj) {
+    if (inj.security)(pre, bank) {
+      println(red("✗ the attacker's goal was reached"))
+    } else {
+      println(green("✓ the attacker's goal was not reached"))
+    }
   }
 }

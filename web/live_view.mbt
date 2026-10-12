@@ -43,9 +43,19 @@ fn live_view(m : Model, emit : @rabbita.Emit[Msg]) -> @html.Html {
         field("Base URL", l.base_url, Text, (l, v) => { ..l, base_url: v, }),
         field("API key", l.api_key, Password, (l, v) => { ..l, api_key: v, }),
         field("Model", l.model, Text, (l, v) => { ..l, model: v, }),
+        label(class="toggle", [
+          input(
+            input_type=Checkbox,
+            checked=l.remember,
+            on_change=emit.map(_ => {
+              LiveEdit(l => { ..l, remember: !l.remember, })
+            }),
+          ),
+          span(" Remember the key in this browser"),
+        ]),
         p(
           class="hint",
-          "The key is kept in this browser only and sent only to the endpoint above.",
+          "The key is sent only to the endpoint above. It is kept in this tab's memory and forgotten when you close it — unless you tick the box, which stores it in this browser's localStorage until you untick it.",
         ),
       ]),
       panel("Your request", [

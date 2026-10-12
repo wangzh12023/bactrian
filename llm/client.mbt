@@ -44,7 +44,9 @@ pub fn Endpoint::request_body(
 ) -> Json {
   let body : Map[String, Json] = {
     "model": Json::string(self.model),
-    "messages": Json::array(messages.iter().map(m => m.to_json()).collect()),
+    "messages": Json::array(
+      messages.iter().map(m => ToJson::to_json(m)).collect(),
+    ),
     "temperature": Json::number(self.temperature),
     "max_tokens": Json::number(self.max_tokens.to_double()),
     "stream": Json::boolean(false),
@@ -64,21 +66,35 @@ pub(all) suberror LlmError {
 } derive(Debug)
 
 ///|
+/// At most the first `n` UTF-16 code units of `text`, for error messages.
+/// (`String::view` aborts when `end_offset` is past the end, and a short
+/// body is the common case: `502 Bad Gateway`.) A surrogate pair is never
+/// split.
+fn excerpt(text : String, n : Int) -> String {
+  if text.length() <= n {
+    return text
+  }
+  let end = if n > 0 && text.at(n - 1).is_leading_surrogate() {
+    n - 1
+  } else {
+    n
+  }
+  text.view(end_offset=end).to_owned()
+}
+
+///|
 /// Extracts the assistant's text from a chat completions response. Thinking
 /// models may return their answer after a reasoning block; only `content`
 /// is used.
 pub fn parse_response(text : String) -> String raise LlmError {
   let j = @json.parse(text) catch {
-    _ => raise BadResponse("not JSON: " + text.view(end_offset=200).to_owned())
+    _ => raise BadResponse("not JSON: " + excerpt(text, 200))
   }
   match j {
     { "choices": [{ "message": { "content": String(c), .. }, .. }, ..], .. } =>
       c
     { "error": { "message": String(m), .. }, .. } => raise BadResponse(m)
-    _ =>
-      raise BadResponse(
-        "unexpected shape: " + text.view(end_offset=200).to_owned(),
-      )
+    _ => raise BadResponse("unexpected shape: " + excerpt(text, 200))
   }
 }
 
@@ -99,7 +115,7 @@ pub async fn complete(
 pub async fn post_json(endpoint : Endpoint, body : Json) -> Json {
   let text = post_text(endpoint, body)
   @json.parse(text) catch {
-    _ => raise BadResponse("not JSON: " + text.view(end_offset=200).to_owned())
+    _ => raise BadResponse("not JSON: " + excerpt(text, 200))
   }
 }
 
@@ -117,7 +133,7 @@ async fn post_text(endpoint : Endpoint, body : Json) -> String {
       return text
     }
     if attempt >= 3 || !(resp.code == 429 || resp.code >= 500) {
-      raise Http(status=resp.code, body=text.view(end_offset=500).to_owned())
+      raise Http(status=resp.code, body=excerpt(text, 500))
     }
     @async.sleep(1000 * (attempt + 1))
   }
