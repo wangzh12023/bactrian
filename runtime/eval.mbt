@@ -63,7 +63,12 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
     }
     Set(elts~, span~) => {
       let (items, spread) = self.eval_elements(elts, span)
-      list_item(dedupe(items), Label::plan(), shape=Label::plan().join(spread))
+      let (uniq, collapse) = dedupe(items)
+      list_item(
+        uniq,
+        Label::plan(),
+        shape=Label::plan().join(spread).join(collapse),
+      )
     }
     Dict(keys~, values~, span~) => {
       let entries : Map[String, (Item, Item)] = Map([])
@@ -212,7 +217,8 @@ fn Ctx::eval(self : Ctx, e : @ast.Expr) -> Item raise PlanError {
         span,
         (ctx, local_pc) => out.push(ctx.eval(elt).taint(local_pc)),
       )
-      list_item(dedupe(out), Label::plan(), shape~)
+      let (uniq, collapse) = dedupe(out)
+      list_item(uniq, Label::plan(), shape=shape.join(collapse))
     }
     GeneratorExp(elt~, generators~, span~) => {
       // Generators are evaluated eagerly; `any(x for x in xs)` works as in
@@ -454,11 +460,16 @@ fn Ctx::comprehension(
 }
 
 ///|
-/// Removes duplicates (used for sets), keeping the first occurrence.
-fn dedupe(items : Array[Item]) -> Array[Item] {
+/// Removes duplicates (used for sets), keeping the first occurrence. Returns
+/// the kept items and the join of the labels every equality decision depended
+/// on: whether two elements collapse into one — and so the set's length — is
+/// decided by their contents, so that label belongs in the set's shape.
+fn dedupe(items : Array[Item]) -> (Array[Item], Label) {
   let seen : Map[String, Unit] = Map([])
   let out = []
+  let mut decided = Label::bottom()
   for x in items {
+    decided = decided.join(x.deep())
     match key_of(x.value) {
       Some(k) =>
         if !seen.contains(k) {
@@ -468,7 +479,7 @@ fn dedupe(items : Array[Item]) -> Array[Item] {
       None => out.push(x)
     }
   }
-  out
+  (out, decided)
 }
 
 ///|

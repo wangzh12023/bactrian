@@ -277,15 +277,93 @@ let plans : Array[String] = [
     #|ordered = sorted(["CH9300762011623852957", "US133000000121212121212"], reverse=flag)
     #|send_money(recipient=ordered[0], amount=1.0, subject="sorted reverse", date="2024-01-01")
   ),
+  // Found by a third adversarial review and by the stronger oracle: a function
+  // whose identity is chosen by untrusted data (a lambda picked from a list by
+  // an untrusted index, or a lambda applied to untrusted data) must run its
+  // body under the control context of that choice, and its result must carry
+  // it. Otherwise the choice of which function runs silently changes a trusted
+  // side effect, or bypasses the `context confirm` check entirely.
+  (
+    #|class Flag(BaseModel):
+    #|    urgent: bool
+    #|f = query_ai_assistant(f"Urgent? {read_file('bill.txt')}", Flag)
+    #|fs = [lambda: send_money(recipient="CH9300762011623852957", amount=1.0, subject="no", date="2024-01-01"), lambda: send_money(recipient="CH9300762011623852957", amount=1.0, subject="yes", date="2024-01-01")]
+    #|fs[1 if f.urgent else 0]()
+  ),
+  (
+    #|class Flag(BaseModel):
+    #|    urgent: bool
+    #|f = query_ai_assistant(f"Urgent? {read_file('bill.txt')}", Flag)
+    #|g = lambda b: "US133000000121212121212" if b else "CH9300762011623852957"
+    #|send_money(recipient=g(f.urgent), amount=1.0, subject="lambda arg", date="2024-01-01")
+  ),
+  // A tool chosen by untrusted data and then called: the call must inherit the
+  // choice's label as control context. Here the data decides whether
+  // `send_money` or `print` runs.
+  (
+    #|flag = "rent" in read_file("bill.txt")
+    #|fs = [print, send_money]
+    #|fs[1 if flag else 0](recipient="CH9300762011623852957", amount=1.0, subject="chosen tool", date="2024-01-01")
+  ),
+  // A set/dict literal's length depends on whether two untrusted values are
+  // equal (deduplication): the shape must carry the elements' labels.
+  (
+    #|parts = read_file("bill.txt").split(" ")
+    #|uniq = {parts[0], parts[1]}
+    #|payees = ["CH9300762011623852957", "US133000000121212121212"]
+    #|send_money(recipient=payees[len(uniq) % 2], amount=1.0, subject="set literal", date="2024-01-01")
+  ),
+  // The same through `set(...)` of a literal list and through a set
+  // comprehension.
+  (
+    #|parts = read_file("bill.txt").split(" ")
+    #|uniq = set([parts[0], parts[1]])
+    #|payees = ["CH9300762011623852957", "US133000000121212121212"]
+    #|send_money(recipient=payees[len(uniq) % 2], amount=1.0, subject="set call", date="2024-01-01")
+  ),
+  (
+    #|parts = read_file("bill.txt").split(" ")
+    #|uniq = {parts[0] if i == 0 else parts[1] for i in range(2)}
+    #|payees = ["CH9300762011623852957", "US133000000121212121212"]
+    #|send_money(recipient=payees[len(uniq) % 2], amount=1.0, subject="set comp", date="2024-01-01")
+  ),
+  // A write through a reference chosen by an untrusted condition must taint
+  // the container that was actually written, whichever branch was taken.
+  (
+    #|text = read_file("bill.txt")
+    #|payees = ["CH9300762011623852957", "US133000000121212121212"]
+    #|other = ["a", "b"]
+    #|y = payees if "rent" in text else other
+    #|y[0] = payees[1]
+    #|send_money(recipient=payees[0], amount=1.0, subject="cond store", date="2024-01-01")
+  ),
+  (
+    #|text = read_file("bill.txt")
+    #|payees = ["CH9300762011623852957", "US133000000121212121212"]
+    #|other = ["a", "b"]
+    #|y = payees if "rent" in text else other
+    #|y.clear()
+    #|send_money(recipient="CH9300762011623852957", amount=float(len(payees)), subject="cond clear", date="2024-01-01")
+  ),
+  (
+    #|text = read_file("bill.txt")
+    #|payees = ["CH9300762011623852957", "US133000000121212121212"]
+    #|grid = [payees, ["a", "b"]]
+    #|row = grid[1 if "rent" in text else 0]
+    #|row[0] = payees[1]
+    #|send_money(recipient=payees[0], amount=1.0, subject="index alias store", date="2024-01-01")
+  ),
 ]
 
 ///|
 /// Runs `plan` against `adv` and returns the trusted projection of the side
-/// effects that were performed.
-fn trusted_effects(plan : String, adv : Adversary) -> Array[String] {
+/// effects that were performed, together with whether the run ran to the end
+/// (`true`) or stopped early (a policy denial, a refused confirmation, a
+/// quarantined refusal, an error).
+fn trusted_effects(plan : String, adv : Adversary) -> (Array[String], Bool) {
   let world = banking_world()
   let host = { adv, effects: [], q_calls: 0, }
-  let (_, session) = @runtime.drive(world, host, plan)
+  let (outcome, session) = @runtime.drive(world, host, plan)
   let out = []
   for e in session.events {
     guard e is ToolCall(tool~, args~, arg_labels~, result=Some(_), ..) else {
@@ -305,16 +383,36 @@ fn trusted_effects(plan : String, adv : Adversary) -> Array[String] {
     })
     out.push("\{tool}(\{shown.join(", ")})")
   }
-  out
+  (out, outcome is Completed)
 }
 
 ///|
-fn prefix_related(a : Array[String], b : Array[String]) -> Bool {
-  let n = a.length().min(b.length())
+/// Progress-insensitive non-interference of the trusted projection.
+///
+/// Untrusted data may make a plan *stop early*, never make it do something
+/// different. So the two traces must be prefix-related, and — crucially — a
+/// run that ran *to the end* shows the whole trusted sequence: the other run's
+/// trace can then only be a prefix of it, and if the other run *also*
+/// completed the two must be identical. This is what rules out an attacker
+/// repeating an effect (a longer trace than a completed reference) or
+/// suppressing a trailing one (a shorter trace from a run that still
+/// completed) — things a bare prefix check cannot see.
+fn agrees(a : (Array[String], Bool), b : (Array[String], Bool)) -> Bool {
+  let (ta, done_a) = a
+  let (tb, done_b) = b
+  let n = ta.length().min(tb.length())
   for i in 0..<n {
-    if a[i] != b[i] {
+    if ta[i] != tb[i] {
       return false
     }
+  }
+  // A completed run exhibits the full sequence; a shorter counterpart is only
+  // allowed if that counterpart stopped early.
+  if done_a && tb.length() > ta.length() {
+    return false
+  }
+  if done_b && ta.length() > tb.length() {
+    return false
   }
   true
 }
@@ -335,13 +433,11 @@ test "non-interference: untrusted data never changes trusted side effects" {
   for i, plan in plans {
     let expected = trusted_effects(plan, reference)
     @qc.check(
-      fn(adv : Adversary) {
-        prefix_related(trusted_effects(plan, adv), expected)
-      },
+      fn(adv : Adversary) { agrees(trusted_effects(plan, adv), expected) },
       count=300,
       counterexample_context=adv => {
-        let attacked = trusted_effects(plan, adv)
-        "plan #\{i}; reference: \{Repr(expected)}; attacked: \{Repr(attacked)}"
+        let (attacked, done) = trusted_effects(plan, adv)
+        "plan #\{i}; reference: \{Repr(expected.0)} (done=\{expected.1}); attacked: \{Repr(attacked)} (done=\{done})"
       },
     )
   }
@@ -352,15 +448,47 @@ test "the reference world exercises real side effects" {
   // Guards against a vacuous property: in the reference world most plans do
   // perform side effects, so "nothing ever happens" cannot pass the test above
   // by accident.
-  let shown = plans.map(p => trusted_effects(p, reference).length())
+  let shown = plans.map(p => trusted_effects(p, reference).0.length())
   debug_inspect(
     shown,
     content=(
-      #|[0, 1, 0, 1, 2, 1, 1, 1, 0, 1, 0, 0, 3, 1, 1, 0, 1, 0, 1, 0, 1, 0]
+      #|[
+      #|  0,
+      #|  1,
+      #|  0,
+      #|  1,
+      #|  2,
+      #|  1,
+      #|  1,
+      #|  1,
+      #|  0,
+      #|  1,
+      #|  0,
+      #|  0,
+      #|  3,
+      #|  1,
+      #|  1,
+      #|  0,
+      #|  1,
+      #|  0,
+      #|  1,
+      #|  0,
+      #|  1,
+      #|  0,
+      #|  0,
+      #|  0,
+      #|  0,
+      #|  0,
+      #|  0,
+      #|  0,
+      #|  1,
+      #|  0,
+      #|  0,
+      #|]
     ),
   )
   inspect(
-    trusted_effects(plans[1], reference).join("; "),
+    trusted_effects(plans[1], reference).0.join("; "),
     content=(
       #|send_money(amount=<untrusted>, date="2024-01-01", recipient="US133000000121212121212", subject="bill")
     ),

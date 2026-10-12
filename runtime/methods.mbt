@@ -37,6 +37,20 @@ fn Ctx::call_method(
   a : Args,
   span : @basic.Span,
 ) -> Item raise PlanError {
+  // Mutating a container in place is only sound when we can see *which*
+  // container is mutated. If the receiver reference was chosen by untrusted
+  // data (`y = a if <data> else b; y.clear()`), a purely dynamic tracker
+  // cannot taint the sibling container the other world would have mutated. We
+  // fail closed: an in-place mutation is refused when the receiver reference
+  // is not trusted. Plan-built containers (`acc = []`) keep a trusted
+  // reference and stay mutable; to reorder tool data, use `sorted(xs)`.
+  if is_mutating_method(recv.value, name) &&
+    !self.world.policy.is_trusted(recv.label) {
+    raise unsupported(
+      "`\{name}` would modify a value selected by untrusted data; build a new value (e.g. with `sorted`, a comprehension or `+`) instead",
+      span,
+    )
+  }
   match recv.value {
     VStr(s) => self.str_method(recv, s, name, a, span)
     VList(l) => self.list_method(recv, l, name, a, span)

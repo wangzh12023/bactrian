@@ -36,11 +36,13 @@ pub(all) struct Limits {
   max_calls : Int
   /// Maximum length of any list built by the plan.
   max_list : Int
+  /// Maximum nesting of lambda calls.
+  max_depth : Int
 }
 
 ///|
 pub fn Limits::default() -> Limits {
-  { max_steps: 200_000, max_calls: 64, max_list: 100_000, }
+  { max_steps: 200_000, max_calls: 64, max_list: 100_000, max_depth: 32, }
 }
 
 ///|

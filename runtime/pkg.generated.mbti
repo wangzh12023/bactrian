@@ -132,6 +132,7 @@ pub(all) struct Limits {
   max_steps : Int
   max_calls : Int
   max_list : Int
+  max_depth : Int
 }
 pub fn Limits::default() -> Self
 

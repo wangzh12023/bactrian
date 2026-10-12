@@ -16,6 +16,17 @@ let mutating_methods : Array[String] = [
 ]
 
 ///|
+/// Whether calling `name` on a value of this kind mutates the receiver. Used
+/// to forbid side effects inside a lambda body, where the receiver may have
+/// been passed in as an argument (so the syntactic purity scan cannot see it).
+fn is_mutating_method(recv : Value, name : String) -> Bool {
+  match recv {
+    VList(_) | VDict(_) => mutating_methods.contains(name)
+    _ => false
+  }
+}
+
+///|
 /// Adds to `out` every variable name that `stmts` may bind or mutate.
 fn may_write(stmts : ArrayView[@ast.Stmt], out : Array[String]) -> Unit {
   for s in stmts {

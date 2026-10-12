@@ -114,11 +114,15 @@ fn Ctx::call_builtin(
           }
         [x] => {
           let items = self.iterate(x, span)
-          let items = if name == "set" { dedupe(items) } else { items }
+          let (items, collapse) = if name == "set" {
+            dedupe(items)
+          } else {
+            (items, Label::bottom())
+          }
           if name == "tuple" {
             { value: VTuple(items), label: x.top(), }
           } else {
-            list_item(items, x.label, shape=x.top())
+            list_item(items, x.label, shape=x.top().join(collapse))
           }
         }
         _ => raise type_error("\{name}() takes at most 1 argument", span)

@@ -57,6 +57,7 @@ pub fn run_once(
     pc: @label.Label::bottom(),
     exit: Ref(@label.Label::bottom()),
     strict: mode is Strict,
+    depth: 0,
   }
   let flow = ctx.exec_block(m.body) catch {
     PlanError(kind=Pending(effect), ..) => {

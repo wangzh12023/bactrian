@@ -67,12 +67,37 @@ fn Ctx::apply(
   a : Args,
   span : @basic.Span,
 ) -> Item raise PlanError {
-  match f.value {
-    VFunc(Tool(name)) => self.call_tool(name, a, span)
-    VFunc(Builtin("query_ai_assistant")) => self.query_quarantined(a, span)
-    VFunc(Builtin(name)) => self.call_builtin(name, a, span)
-    VFunc(Method(recv, name)) =>
-      self.call_method(recv, name, a, span).taint(f.label)
+  // Which function runs may itself have been chosen by untrusted data (a
+  // lambda or a bound method picked from a list by an untrusted index). The
+  // call happens because of that choice: it runs under `f.label` as control
+  // context — so a tool call inside it is checked as data-dependent, and a
+  // mutation it makes is labelled — and its result carries `f.label`.
+  let ctx = self.with_pc(f.label)
+  // A lambda body must be pure (see the purity scan in `eval`). The scan sees
+  // only syntax, so it cannot stop a call that reaches an effect indirectly —
+  // a tool or a mutating method passed *into* the lambda as an argument and
+  // called through a parameter. We also forbid that here: inside a lambda
+  // (`depth > 0`) no side effect may run. Without this, a tool call inside a
+  // `sorted`/`max` key would run once per untrusted element with no approval.
+  if self.depth > 0 {
+    let effectful = match f.value {
+      VFunc(Tool(_)) => true
+      VFunc(Builtin("query_ai_assistant" | "print")) => true
+      VFunc(Method(recv, name)) => is_mutating_method(recv.value, name)
+      _ => false
+    }
+    if effectful {
+      raise unsupported(
+        "a lambda must not cause a side effect (it called something that does)",
+        span,
+      )
+    }
+  }
+  let result = match f.value {
+    VFunc(Tool(name)) => ctx.call_tool(name, a, span)
+    VFunc(Builtin("query_ai_assistant")) => ctx.query_quarantined(a, span)
+    VFunc(Builtin(name)) => ctx.call_builtin(name, a, span)
+    VFunc(Method(recv, name)) => ctx.call_method(recv, name, a, span)
     VFunc(Lambda(fun)) => {
       if fun.params.length() != a.pos.length() || !a.kw.is_empty() {
         raise type_error(
@@ -80,14 +105,22 @@ fn Ctx::apply(
           span,
         )
       }
+      if self.depth >= self.world.limits.max_depth {
+        raise err(
+          Budget,
+          "lambdas are nested more than \{self.world.limits.max_depth} calls deep",
+          span,
+        )
+      }
       let scope : Map[String, Item] = Map([])
       for i, p in fun.params {
         scope[p] = a.pos[i]
       }
-      let ctx = { ..self, scopes: [..fun.scopes, scope], }
-      ctx.eval(fun.body).taint(f.label)
+      { ..ctx, scopes: [..fun.scopes, scope], depth: self.depth + 1, }.eval(
+        fun.body,
+      )
     }
-    VClass(BuiltinType(name)) => self.call_builtin(name, a, span)
+    VClass(BuiltinType(name)) => ctx.call_builtin(name, a, span)
     VClass(ErrorType(name)) => {
       let msg = match a.pos {
         [] => str_item("", Label::plan())
@@ -96,10 +129,11 @@ fn Ctx::apply(
       let fields : Map[String, Item] = Map([("args", msg)])
       { value: VRecord({ type_name: name, fields, }), label: msg.deep(), }
     }
-    VClass(RecordType(name)) => self.construct(name, a, span)
+    VClass(RecordType(name)) => ctx.construct(name, a, span)
     other =>
       raise type_error("'\{other.type_name()}' object is not callable", span)
   }
+  result.taint(f.label)
 }
 
 ///|

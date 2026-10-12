@@ -20,6 +20,8 @@ priv struct Ctx {
   pc : Label
   exit : Ref[Label]
   strict : Bool
+  /// How many lambda calls are in progress (bounded by `Limits.max_depth`).
+  depth : Int
 }
 
 ///|
@@ -401,14 +403,20 @@ fn Ctx::assign(
     Subscript(value~, slice~, span~, ..) => {
       let container = self.eval(value)
       let key = self.eval(slice)
-      let stored = item.taint(key.label.join(self.flow()))
+      // Which container is mutated may itself depend on data: `y = a if cond
+      // else b; y[0] = v` writes through whichever list `y` is. The reference
+      // label of `container` carries that choice, so the written slot and the
+      // shape must carry it too — otherwise a later read of the container that
+      // was (or was not) written would not reveal `cond`.
+      let via = key.label.join(self.flow()).join(container.label)
+      let stored = item.taint(via)
       match container.value {
         VList(l) => {
           let i = self.index_of(key, l.items.length(), span)
           l.items[i] = stored
           // Which slot changed depends on the index: every later read of the
           // list must know it.
-          l.shape = l.shape.join(key.label).join(self.flow())
+          l.shape = l.shape.join(via)
         }
         VDict(d) =>
           match key_of(key.value) {
@@ -416,7 +424,7 @@ fn Ctx::assign(
               // Whether this adds a key or replaces one — and so the size of
               // the dict and the value under every other key — depends on
               // the key, even when the key already exists.
-              d.shape = d.shape.join(key.label).join(self.flow())
+              d.shape = d.shape.join(via)
               d.entries[k] = (key, stored)
             }
             None =>
