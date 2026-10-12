@@ -353,6 +353,16 @@ let plans : Array[String] = [
     #|row[0] = payees[1]
     #|send_money(recipient=payees[0], amount=1.0, subject="index alias store", date="2024-01-01")
   ),
+  // Bug 9: a side effect inside a lambda must not run per element. With the
+  // guard the plan is refused (empty trace); without it the sorted-key lambda
+  // calls send_money once per transaction, so the trace length tracks the
+  // number of transactions — which differs across worlds and the full-trace
+  // oracle rejects it.
+  (
+    #|txs = get_most_recent_transactions(10)
+    #|ordered = sorted(txs, key=lambda t: send_money(recipient="CH9300762011623852957", amount=1.0, subject="per element", date="2024-01-01"))
+    #|send_money(recipient="CH9300762011623852957", amount=1.0, subject="after", date="2024-01-01")
+  ),
 ]
 
 ///|
@@ -608,6 +618,7 @@ test "the reference world exercises real side effects" {
       #|  0,
       #|  0,
       #|  1,
+      #|  0,
       #|  0,
       #|  0,
       #|]

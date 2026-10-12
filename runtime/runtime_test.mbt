@@ -301,3 +301,43 @@ test "values computed from trusted tools stay trusted" {
   inspect(args["amount"].stringify(), content="905")
   inspect(args["subject"].stringify(), content="\"half of 1810.0\"")
 }
+
+///|
+test "bug 10: a recursive lambda hits the depth budget instead of crashing" {
+  // `f = lambda x: f(x)` would overflow the host stack. The call-depth budget
+  // turns it into an ordinary, catchable failure.
+  let host = script_host(banking_tools())
+  let plan =
+    #|f = lambda x: f(x)
+    #|print(f(1))
+    #|
+  let (outcome, _) = run(host, plan)
+  match outcome {
+    Failed(e) =>
+      debug_inspect(
+        e.kind(),
+        content=(
+          #|Budget
+        ),
+      )
+    _ => fail("expected the recursion to hit the depth budget")
+  }
+}
+
+///|
+test "bug 9: a tool call inside a lambda is refused, not run per element" {
+  // A sorted-key lambda that calls a tool would, without the guard, perform
+  // the effect once per element with no approval. It is refused instead.
+  let host = script_host(banking_tools())
+  let plan =
+    #|txs = get_most_recent_transactions(10)
+    #|ordered = sorted(txs, key=lambda t: send_money(recipient="CH9300762011623852957", amount=1.0, subject="per element", date="2024-01-01"))
+    #|
+  let (outcome, _) = run(host, plan)
+  match outcome {
+    Failed(e) => inspect(e.kind().python_name(), content="NotSupportedError")
+    _ => fail("expected the lambda side effect to be refused")
+  }
+  // No send_money was performed.
+  inspect(host.performed.filter(p => p.0 == "send_money").length(), content="0")
+}
