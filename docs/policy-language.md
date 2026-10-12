@@ -70,5 +70,8 @@ $ moon run cmd/bactrian -- policy examples/banking.policy
 ```
 
 parses the file, prints it back in canonical form (`parse ∘ render` is the
-identity — tested), and reports rules that mention tools or arguments that do not
-exist, and tools without a policy.
+identity — tested, including reasons that contain `"`, `\` and control
+characters, which are written with JSON escapes `\"` and `\\`), and rejects a
+policy whose rules or audiences mention tools or arguments that do not exist
+(an unknown argument would make a condition silently pass), reporting tools
+without a policy as a warning.

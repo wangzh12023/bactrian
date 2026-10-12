@@ -36,7 +36,7 @@
 
 <section class="slide on">
   <h1>🐫🐫 Bactrian 双峰驼</h1>
-  <p class="big">让 AI 智能体从设计上免疫提示注入</p>
+  <p class="big">让注入的文本无法决定智能体的行为</p>
   <p class="sub">不是更聪明的过滤器，而是一个知道每个值从哪里来的解释器 · 用 MoonBit 实现</p>
   <p class="sub">github.com/wangzh12023/bactrian · wangzh12023.github.io/bactrian</p>
 </section>
@@ -54,7 +54,7 @@
     <div>
       <ul>
         <li>提示注入：OWASP LLM Top 10 第 1 位</li>
-        <li>2026：Claude Cowork 外泄文件、GitHub agent 泄露私有仓库（GitLost）</li>
+        <li>已有多起针对 AI agent 的提示注入致数据外泄的公开演示/报告</li>
         <li>“检测”是概率性的：自适应攻击下大多数防御失效<br><span class="sub">The Attacker Moves Second, 2025</span></li>
         <li class="bad"><b>实测：GPT-4o 普通智能体 144 次攻击中 67 次被攻破（47%）；模型越强，越“听话”</b></li>
       </ul>
@@ -125,12 +125,12 @@ effect update_password
   <table>
     <tr><th>性质</th><th>证据</th></tr>
     <tr><td>标签构成格</td><td>QuickCheck 格定律</td></tr>
-    <tr><td><b>非干扰性</b>：改写所有不可信数据，放行的副作用不变</td><td>22 个计划 × 300 个对抗世界</td></tr>
+    <tr><td><b>非干扰性</b>：改写所有不可信数据，放行的副作用不变</td><td>31 个计划 × 300 个对抗世界 + 表达式模糊测试</td></tr>
     <tr><td>隔离模型被完全劫持，144 种攻击</td><td class="good"><b>0 / 144</b>（换成全放行策略即被攻破）</td></tr>
     <tr><td>来自不可信数据的报错不回灌规划模型</td><td>agent 测试</td></tr>
-    <tr><td>重试不重复副作用</td><td>sans-IO 确定性回放 + 测试</td></tr>
+    <tr><td>重试不重复<b>同一次</b>调用（同工具同参数）</td><td>sans-IO 确定性回放 + 测试</td></tr>
   </table>
-  <p><b>七个真实漏洞</b>被找到并修复：性质测试 1 个、真实模型评测 1 个、两轮对抗式代码审查 5 个（<code>[*xs]</code>、<code>max(…, default=…)</code>、推导式中的工具调用、<code>enumerate</code> 的 start、<code>sorted</code> 的 reverse）——所有攻击计划都已加入性质测试。</p>
+  <p><b>十二个真实漏洞</b>被找到并修复：性质测试 1、真实模型评测 1、三轮对抗式代码审查 6、评委视角审查 2、强化判定器下的进一步探查 2——每个修复都有回归测试（十个进入性质测试，两个为确定性测试）。</p>
 </section>
 
 <section class="slide">
@@ -138,10 +138,10 @@ effect update_password
   <table>
     <tr><th>模型</th><th>智能体</th><th>受攻击时可用性</th><th>攻击成功率</th></tr>
     <tr><td>GPT-4o</td><td>普通工具调用</td><td>77%</td><td class="bad"><b>47%（67/144）</b></td></tr>
-    <tr><td>GPT-4o</td><td><b>Bactrian</b></td><td>53%</td><td class="good"><b>1/144¹</b></td></tr>
+    <tr><td>GPT-4o</td><td><b>Bactrian</b></td><td>52%</td><td class="good"><b>0/144</b></td></tr>
     <tr><td>GPT-4o-mini</td><td>普通工具调用</td><td>53%</td><td class="bad"><b>26%（38/144）</b></td></tr>
     <tr><td>GPT-4o-mini</td><td><b>Bactrian，隔离模型被劫持</b></td><td>40%</td><td class="good"><b>1/144¹</b></td></tr>
-    <tr><td>DeepSeek</td><td><b>Bactrian，隔离模型被劫持</b></td><td>38%</td><td class="good"><b>0%</b></td></tr>
+    <tr><td>DeepSeek</td><td><b>Bactrian，隔离模型被劫持</b></td><td>40%</td><td class="good"><b>0/144</b></td></tr>
   </table>
   <p class="sub">¹ 评测误报：该任务本身就要求给这个账户付房租。代价是可用性：文档能触发的动作需要用户确认（模拟用户全部拒绝）；“按文件指示办”的任务按设计失败。</p>
 </section>
@@ -158,7 +158,7 @@ effect update_password
       <li><b>内置 QuickCheck</b>：安全性质直接写成性质测试</li>
       <li><b>快照测试</b>：<code>inspect</code> + <code>moon test --update</code></li>
       <li>复用生态：pure-py 解析器、rabbita 前端、moonbitlang/async</li>
-      <li>CI：Linux + Windows，wasm + JS，零警告</li>
+      <li>CI：Linux + Windows，wasm + JS，<code>--deny-warn</code> 零警告</li>
     </ul>
   </div>
 </section>
@@ -170,8 +170,8 @@ effect update_password
     <tr><td>阻止注入操纵动作</td><td>✅</td><td>⚠️ 概率</td><td>❌</td><td>✅</td></tr>
     <tr><td>追踪隐式信息流</td><td>部分</td><td>❌</td><td>❌</td><td>✅</td></tr>
     <tr><td>策略</td><td>Python 回调</td><td>—</td><td>白名单</td><td>声明式语言</td></tr>
-    <tr><td>重试不重复副作用</td><td>❌</td><td>—</td><td>—</td><td>✅</td></tr>
-    <tr><td>有测试的安全保证</td><td>零测试</td><td>—</td><td>—</td><td>格定律 + 非干扰 + 144 格</td></tr>
+    <tr><td>重试不重复同一次调用</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
+    <tr><td>有测试的安全保证</td><td>标签/策略无测试</td><td>—</td><td>—</td><td>格定律 + 非干扰 + 144 格</td></tr>
     <tr><td>浏览器 / 嵌入</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td></tr>
   </table>
 </section>

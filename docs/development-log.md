@@ -12,11 +12,11 @@ of the system under test.
 
 | Activity | Role of AI | How correctness was established |
 |---|---|---|
-| Market and literature research (CaMeL, FIDES, AgentDojo, MoonBit ecosystem, past winners) | Searching, reading and summarising repositories, papers and registries | Claims were checked against the sources (reports in the project's research notes); the decision record lists what was verified first-hand |
+| Market and literature research (CaMeL, FIDES, AgentDojo, MoonBit ecosystem, past winners) | Searching, reading and summarising repositories, papers and registries | Claims were checked against the sources; what was verified first-hand is listed in the timeline (the working research notes are the participant's and are kept outside the repository) |
 | Design (lattice, label rules, sans-IO effects, policy language) | Proposing and discussing designs | Every rule is covered by a test; the non-interference property is the arbiter |
-| Code | Writing MoonBit code with the compiler as the first reviewer (`moon check`), then tests | 43 test blocks incl. QuickCheck properties; CI on Linux and Windows, wasm and JS |
-| Debugging and review | Interpreting failing property tests and benchmark runs; independent adversarial review agents tasked with breaking non-interference | Seven real security bugs were found this way (see the timeline); each became a regression plan in the property test |
-| As components | The planner and the quarantined LLM are real models (DeepSeek, Qwen, GPT-4o-mini via an OpenAI-compatible gateway) | The security argument does not depend on them: tests replace the quarantined model with an adversary |
+| Code | Writing MoonBit code with the compiler as the first reviewer (`moon check`), then tests | 63 test blocks incl. QuickCheck properties and a generated-expression fuzzer; CI on Linux and Windows, wasm and JS |
+| Debugging and review | Interpreting failing property tests and benchmark runs; independent adversarial-review and judge-perspective agents tasked with breaking non-interference | Twelve real security bugs were found this way (see the timeline); each has a regression test |
+| As components | The planner and the quarantined LLM are real models (DeepSeek, GPT-4o and GPT-4o-mini via an OpenAI-compatible gateway) | The security argument does not depend on them: tests replace the quarantined model with an adversary |
 
 What AI was **not** used for: the security guarantees are not "checked by an
 LLM". They follow from the interpreter's label rules and are tested
@@ -35,7 +35,7 @@ deterministically.
   operators, builtins, methods, comprehensions, records, tool calls,
   quarantined calls, STRICT control-flow labels.
 - Redesign to sans-IO effects with deterministic replay, so that the same core
-  serves CLI, browser and tests, and retries never repeat side effects.
+  serves CLI, browser and tests, and a retry never repeats an identical call.
 - Non-interference property test — **found a bug**: a write to an existing
   dictionary key did not record the key's label in the dictionary's shape.
   Fixed: keyed writes always join the key into the shape; reads by key depend
@@ -64,7 +64,38 @@ deterministically.
 - A second adversarial review round **found three more holes**: tool calls
   inside comprehensions escaped the comprehension's control context;
   `enumerate` ignored `start`'s label; `sorted` ignored `reverse`'s label.
-  Fixed; exploits added to the property (22 plans).
+  Fixed; exploits added to the property.
+- A third adversarial review and a judge-perspective review **found four more**:
+  a function whose identity was chosen by untrusted data ran its body under a
+  clean context; a side effect inside a lambda (e.g. a `sorted` key that calls a
+  tool) ran once per element with no approval; a recursive lambda overflowed the
+  host stack; and the non-interference oracle only compared trace *prefixes*, so
+  it could not see an attacker repeat or suppress an effect. The oracle now
+  compares full traces when both runs complete; calls run under the callee's
+  label; lambdas may not cause side effects; a lambda-depth budget bounds
+  recursion.
+- Further probing with the stronger oracle **found two more**: a set's length
+  (after de-duplication) and a write through a reference chosen by untrusted
+  data. Fixed, and a generated-expression fuzzer now exercises the label rules
+  of the arithmetic, `len`, `sum`, `max`, membership, equality and indexing that
+  most of the bugs hid in. Twelve bugs in all; every fix has a regression test.
+- Engineering hardening after a judge-perspective review: policies fail closed
+  (a misspelt condition is a validation error, not a silent allow), policy
+  reasons are escaped and round-trip, the CLI can approve a request and exits
+  non-zero on a bad policy, the libraries bundled into the playground are listed
+  in NOTICE, and the deployed site carries the licence.
+
+## Who did what
+
+The participant chose the problem and the direction (a CaMeL-style
+information-flow runtime as the open niche in the MoonBit ecosystem), set the
+constraints (MoonBit as the main language, real guarantees over demos,
+reuse before reinvention), and reviewed the design and the results. The AI
+assistant did most of the writing — code, tests and these documents — under
+that direction, and acted as the adversary in the review rounds. The division
+is deliberate: the security argument is not "an LLM says so" but the
+interpreter's label rules, checked by deterministic property tests that an
+LLM wrote and a human can read and re-run.
 
 ## Design decisions worth explaining
 

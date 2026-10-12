@@ -10,6 +10,7 @@ flowchart BT
   agent[agent<br/>planner prompt · task loop · feedback]
   llm[llm<br/>OpenAI-compatible client]
   banking[suites/banking<br/>tools · data · tasks · policy]
+  mail[suites/mail<br/>tools · data · tasks · policy]
   bench[bench<br/>benchmark · baseline agent]
   cli[cmd/bactrian]
   web[web<br/>playground]
@@ -19,15 +20,16 @@ flowchart BT
   agent --> runtime
   llm --> agent
   banking --> runtime
+  mail --> runtime
   bench --> llm
   bench --> banking
   cli --> bench
   web --> banking
 ```
 
-Only `llm`, `bench` and `cmd/bactrian` perform I/O. Everything below them is
-pure and runs unchanged on every MoonBit backend; the playground is the same
-code compiled to JavaScript.
+Only `llm`, `bench`, `cmd/bactrian` and `web` perform I/O. Everything below
+them is pure and runs unchanged on every MoonBit backend; the playground is the
+same code compiled to JavaScript.
 
 ## 1. Labels (`label/`)
 
@@ -49,10 +51,13 @@ the lattice laws.
 The plan language is a Python subset (parsed by
 [pure-py](https://github.com/marianoguerra/pure-py-mb), which produces a
 CPython-shaped AST): assignments, `if`/`elif`/`else`, `for` with
-`break`/`continue`, comprehensions, f-strings, pure lambdas, records declared as
+`break`/`continue`, comprehensions, f-strings, lambdas, records declared as
 `class X(BaseModel)`, and the usual builtins and methods of `str`, `list` and
-`dict`. There is no `def`, `while`, `try`, `import` or I/O: every program
-terminates, and the only way to reach the outside world is a tool call.
+`dict`. Lambdas must be pure: their bodies may not call a tool,
+`query_ai_assistant` or `print`, use a mutating method, or assign. There is no
+`def`, `while`, `try`, `import` or I/O; a step, call, list-size and lambda-depth
+budget bound every run, so every plan terminates, and the only way to reach the
+outside world is a tool call.
 
 ### Values
 
