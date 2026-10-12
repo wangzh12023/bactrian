@@ -14,6 +14,7 @@ import {
   "wangzh12023/bactrian/policy",
   "wangzh12023/bactrian/runtime",
   "moonbitlang/core/quickcheck" @qc,
+  "moonbitlang/core/quickcheck/splitmix",
 } for "test"
 
 warnings = "-implicit_impl_as_method"

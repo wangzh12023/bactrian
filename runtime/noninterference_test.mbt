@@ -356,6 +356,132 @@ let plans : Array[String] = [
 ]
 
 ///|
+/// A randomly generated pure integer expression over a seed value. Used to
+/// fuzz the label rules of the operations and builtins that are easy to get
+/// wrong (and were, five times). Every leaf is either an untrusted seed (`s`)
+/// or a plan constant, and every node is an operation whose result's label
+/// must be at least the join of its operands'. The generator never introduces
+/// a side effect, so an expression can be dropped into a payee index safely.
+priv enum IntExpr {
+  Seed
+  Const(Int)
+  Add(IntExpr, IntExpr)
+  Mul(IntExpr, IntExpr)
+  Len(IntExpr) // len of a list built from the operand
+  IfEq(IntExpr, IntExpr) // 1 if a == b else 0
+  InStr(IntExpr) // 1 if str(a) in some string else 0
+  SumList(IntExpr) // sum([a, a])
+  MaxDefault(IntExpr) // max([a], default=0)
+  ListIndex(IntExpr) // [a, a][0]
+}
+
+///|
+fn IntExpr::render(self : IntExpr) -> String {
+  match self {
+    Seed => "s"
+    Const(n) => n.to_string()
+    Add(a, b) => "(\{a.render()} + \{b.render()})"
+    Mul(a, b) => "(\{a.render()} * \{b.render()})"
+    Len(a) => "len([\{a.render()}, \{a.render()}])"
+    IfEq(a, b) => "(1 if \{a.render()} == \{b.render()} else 0)"
+    InStr(a) => "(1 if str(\{a.render()}) in \"0123456789\" else 0)"
+    SumList(a) => "sum([\{a.render()}, \{a.render()}])"
+    MaxDefault(a) => "max([\{a.render()}], default=0)"
+    ListIndex(a) => "[\{a.render()}, \{a.render()}][0]"
+  }
+}
+
+///|
+fn gen_int_expr(rs : @qc.RandomState, depth : Int) -> IntExpr {
+  if depth <= 0 {
+    return if rs.next_uint(limit=2) == 0 {
+      Seed
+    } else {
+      Const(rs.next_uint(limit=4).reinterpret_as_int())
+    }
+  }
+  match rs.next_uint(limit=9).reinterpret_as_int() {
+    0 => Add(gen_int_expr(rs, depth - 1), gen_int_expr(rs, depth - 1))
+    1 => Mul(gen_int_expr(rs, depth - 1), gen_int_expr(rs, depth - 1))
+    2 => Len(gen_int_expr(rs, depth - 1))
+    3 => IfEq(gen_int_expr(rs, depth - 1), gen_int_expr(rs, depth - 1))
+    4 => InStr(gen_int_expr(rs, depth - 1))
+    5 => SumList(gen_int_expr(rs, depth - 1))
+    6 => MaxDefault(gen_int_expr(rs, depth - 1))
+    7 => ListIndex(gen_int_expr(rs, depth - 1))
+    _ => Seed
+  }
+}
+
+///|
+/// Does the expression actually read the seed? A generated expression that
+/// ignores `s` is trusted, so it legitimately selects a payee — not a
+/// counterexample. We only fuzz expressions that depend on the seed.
+fn IntExpr::uses_seed(self : IntExpr) -> Bool {
+  match self {
+    Seed => true
+    Const(_) => false
+    Add(a, b) | Mul(a, b) | IfEq(a, b) => a.uses_seed() || b.uses_seed()
+    Len(a) | InStr(a) | SumList(a) | MaxDefault(a) | ListIndex(a) =>
+      a.uses_seed()
+  }
+}
+
+///|
+/// A plan that derives a payee index from an untrusted seed through `expr`.
+/// Because the index depends only on untrusted data, the recipient must be
+/// untrusted in *every* world, so the policy always asks and the refused
+/// confirmation stops the plan: the trusted projection is empty everywhere.
+/// If any operation in `expr` dropped the seed's label, some world would send
+/// to a trusted literal and the property would fire.
+fn fuzz_plan(expr : IntExpr) -> String {
+  (
+    $|txs = get_most_recent_transactions(10)
+    $|s = int(txs[0].amount) if txs else 0
+    $|payees = ["CH9300762011623852957", "US133000000121212121212"]
+    $|send_money(recipient=payees[(\{expr.render()}) % 2], amount=1.0, subject="fuzz", date="2024-01-01")
+  )
+}
+
+///|
+/// The security property, over randomly generated index expressions: no
+/// generated plan whose index depends on untrusted data may ever perform a
+/// trusted side effect (the recipient is data-derived, so it is always held
+/// for approval, which the adversary refuses). This fuzzes the label rules of
+/// the arithmetic, `len`, `sum`, `max`, membership, equality and indexing that
+/// past bugs hid in.
+test "non-interference: generated index expressions never pick a trusted payee" {
+  let rs = @splitmix.new(seed=0x9e37_79b9_7f4a_7c15)
+  let mut checked = 0
+  for _ in 0..<400 {
+    let expr = gen_int_expr(rs, 3)
+    if !expr.uses_seed() {
+      continue
+    }
+    checked += 1
+    let plan = fuzz_plan(expr)
+    // The reference world fixes the expected trusted projection; no
+    // adversarial world (a different seed value from the first transaction's
+    // amount) may change it, except by stopping the plan early. If any
+    // operation in `expr` dropped the seed's label, a world whose seed flips
+    // the index parity would select the *other*, trusted-looking payee and
+    // perform a trusted effect the reference did not — caught by `agrees`.
+    let expected = trusted_effects(plan, reference)
+    for seed in [0, 1, 2, 3, 7, 12, 13, 98, 99, 1100] {
+      let adv = { ..reference, amounts: [seed.to_double(), 1.0], }
+      if !agrees(trusted_effects(plan, adv), expected) {
+        abort(
+          "fuzz expr `\{expr.render()}` with seed \{seed} changed a trusted effect",
+        )
+      }
+    }
+  }
+  if checked < 100 {
+    abort("too few seed-dependent expressions generated: \{checked}")
+  }
+}
+
+///|
 /// Runs `plan` against `adv` and returns the trusted projection of the side
 /// effects that were performed, together with whether the run ran to the end
 /// (`true`) or stopped early (a policy denial, a refused confirmation, a
