@@ -155,7 +155,7 @@ fn header() -> @html.Html {
     h1([span(class="logo", "🐫🐫"), span(" Bactrian")]),
     p(
       class="tagline",
-      "Agents that cannot be talked into anything. Every value carries where it came from and who may read it; a policy checks every action before it happens. Not a filter that guesses — an interpreter that knows.",
+      "Injected text cannot decide what the agent does — by design, not by detection. Every value carries where it came from and who may read it; a policy checks every action before it happens. Not a filter that guesses — an interpreter that knows.",
     ),
   ])
 }
